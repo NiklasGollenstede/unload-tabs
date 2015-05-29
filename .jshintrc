@@ -1,0 +1,34 @@
+{
+	"indent": 1,
+	"-W002": false, // Value of '{cought exception}' may be overwritten in IE 8 and earlier.
+	"-W006": false, // Confusing minuses.
+	"-W030": false, // Expected an assignment or function call and instead saw an expression.
+	"-W054": false, // The Function constructor is a form of eval.
+	"-W093": false, // Did you mean to return a conditional instead of an assignment?
+
+	"curly": true,
+	"newcap": false,
+	"undef": false,
+	"eqnull": true,
+	"laxbreak": true,
+	"validthis": true,
+
+	"esnext": true,
+	"strict": true,
+	"globalstrict": true,
+	"latedef": "nofunc",
+	// "novar": true, // may be coming @see #1549
+
+	"globals": {
+		"document": true,
+		"self": true,
+		"window": false,
+		"require": false,
+		"console": false,
+		"exports": false
+	}
+}
+/*jshint multistr: true */
+/*jshint laxbreak: true */
+/*jshint sub: true */
+/*jshint unused: vars */
