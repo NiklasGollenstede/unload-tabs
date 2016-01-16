@@ -7,8 +7,31 @@ const NameSpace = require('sdk/core/namespace').ns;
 const Prefs = require("sdk/simple-prefs");
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
+Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
+const toBase64 = btoa;
+
+function log() { console.log.apply(console, arguments); return arguments[arguments.length - 1]; }
 
 let hidden; // NameSpace to add hidden values to xul elements
+
+const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
+	@namespace url(http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul);
+	#context_unloadTab {
+		list-style-image: url(chrome://browser/skin/menuPanel-exit.png);
+		-moz-image-region: rect(0px, 16px, 16px, 0px);
+		-moz-binding:url(chrome://global/content/bindings/menu.xml#menuitem-iconic-noaccel) !important;
+	}
+	#context_unloadTab > hbox.menu-iconic-left {
+		-moz-appearance: menuimage;
+	}
+	#context_unloadTab > hbox.menu-iconic-left[disabled] {
+		opacity: .5;
+	}
+
+	.tabbrowser-tab[pending=true], menuitem.alltabs-item[pending=true] {
+		${ decodeURIComponent(Prefs.prefs.tabStyle.replace(/[\{\}]/g, '')) }
+	}
+`) +'"';
 
 /**
  * find closest tab tat is not pending, i.e. loaded
@@ -19,25 +42,21 @@ let hidden; // NameSpace to add hidden values to xul elements
 function findClosestNonPending(tabs, current) {
 	let index = Array.prototype.indexOf.call(tabs, current);
 
-	let tab;
+	let visibleTab; // closest not hidden tab
+	let hiddenTab; // closest tab, may be hidden
 
-	// loop up and down at the same time, looking for a loaded tab
-	for (
-		let j = index - 1, i = index- -1;
-		j >= 0 || i < tabs.length;
-		--j, ++i
-	) {
-		if (j >= 0 && tabs[j] && !tabs[j].getAttribute('pending')) {
-			tab = tabs[j];
-			break;
-		}
-		if (i < tabs.length && tabs[i] && !tabs[i].getAttribute('pending')) {
-			tab = tabs[i];
-			break;
-		}
+	function isGood(tab) {
+		return tab && !tab.getAttribute('pending') && (hiddenTab = hiddenTab || tab) && !tab.getAttribute('hidden') && (visibleTab = tab);
 	}
 
-	return tab;
+	// search up and down at the same time, looking for a loaded tabs, stopping once a loaded and not hidden tab is found
+	for (
+		let j = index - 1, i = index + 1, length = tabs.length;
+		(j >= 0 || i < length) && !(isGood(tabs[j]) || isGood(tabs[i]));
+		--j, ++i
+	) { }
+
+	return visibleTab || hiddenTab;
 }
 
 /**
@@ -48,12 +67,7 @@ function findClosestNonPending(tabs, current) {
 function unloadTab(gBrowser, tab) {
 	if (tab.getAttribute('pending')) { return; }
 
-	if (tab.selected) {
-		// select an other tab, won't work if 'tab' is only tab
-		gBrowser.selectedTab = findClosestNonPending(tab.parentNode, tab);
-	}
-
-/// bluntly copied from bartablitex@szabolcs.hubai
+/// copied from bartablitex@szabolcs.hubai
 
 	// clone tabs SessionStore state into a new tab
 	let newtab = gBrowser.addTab(null, {skipAnimation: true});
@@ -77,6 +91,15 @@ function unloadTab(gBrowser, tab) {
 		});
 	}
 
+/// end copy
+
+	if (tab.selected) {
+		// select an other tab, won't work if 'tab' is only tab
+		gBrowser.selectedTab = findClosestNonPending(tab.parentNode.children, tab);
+	}
+
+/// copied from bartablitex@szabolcs.hubai
+
 	// Close the original tab.  We're taking the long way round to
 	// ensure the nsISessionStore service won't save this in the
 	// recently closed tabs.
@@ -93,25 +116,24 @@ function unloadTab(gBrowser, tab) {
  * @param  {high-level window}   window    the window that just opened
  */
 function windowOpened(window) {
-	let { gBrowser } = viewFor(window);
-	let { tabContainer } = gBrowser;
-	// let confirm = gBrowser.contentWindow.confirm.bind(gBrowser.contentWindow);
-	let { contextMenu } = tabContainer;
-	let document = tabContainer.ownerDocument;
+	const { gBrowser } = viewFor(window);
+	const { tabContainer } = gBrowser;
+	// const confirm = gBrowser.contentWindow.confirm.bind(gBrowser.contentWindow);
+	const { contextMenu } = tabContainer;
+	const document = tabContainer.ownerDocument;
 
-	let capture = { tab: null, };
-	let onContext = event => {
-		let menu = event.target;
+	const capture = { tab: null, };
+	const onContext = event => {
+		const menu = event.target;
 		capture.tab = menu.contextTab || menu.triggerNode;
 
 		let item = menu.children.context_unloadTab;
 
 		if (!item) {
-			let next = menu.children.context_reloadTab.nextSibling;
 			item = menu.ownerDocument.createElement('menuitem');
 			item.id = 'context_unloadTab';
 			item.setAttribute('label', 'Unload Tab');
-			menu.insertBefore(item, next);
+			menu.insertBefore(item, menu.children.context_reloadTab.nextSibling);
 			item.addEventListener('click', click => {
 				if (click.button) { return; }
 				unloadTab(gBrowser, capture.tab);
@@ -121,7 +143,7 @@ function windowOpened(window) {
 		item[capture.tab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
 	};
 
-	let onClose = ({ target: tab }) => {
+	const onClose = ({ target: tab }) => {
 		if (!tab.selected) { return; }
 
 		gBrowser.selectedTab = findClosestNonPending(tabContainer.children, gBrowser.selectedTab);
@@ -133,32 +155,29 @@ function windowOpened(window) {
 	tabContainer.addEventListener('TabClose', onClose, false);
 	contextMenu.addEventListener('popupshowing', onContext, false);
 
-	hidden(tabContainer).styleElement = document.insertBefore(document.createProcessingInstruction(
-		'xml-stylesheet',
-		'href="data:text/css,.tabbrowser-tab[pending=true], menuitem.alltabs-item[pending=true] {'+
-			decodeURIComponent(Prefs.prefs.tabStyle.replace(/[\{\}]/g, ''))
-		+'}"'
-	), document.firstChild);
+	hidden(tabContainer).styleElement = document.insertBefore(
+		document.createProcessingInstruction('xml-stylesheet', CSS),
+		document.firstChild
+	);
 
 	Prefs.prefs.debug && (gBrowser.unloadtab = exports);
 }
-
 /**
  * unloads the addon for a window
  * called by high-levels Window.on('close', ...)
  * @param  {high-level window}   window    the window that just closed / is about to close (?)
  */
 function windowClosed(window) {
-	let { gBrowser } = viewFor(window);
-	let { tabContainer } = gBrowser;
-	let { contextMenu } = tabContainer;
+	const { gBrowser } = viewFor(window);
+	const { tabContainer } = gBrowser;
+	const { contextMenu } = tabContainer;
 
 	{
-		let item = contextMenu.querySelector('#context_unloadTab');
+		const item = contextMenu.querySelector('#context_unloadTab');
 		item && item.remove();
 	}
 
-	let { onClose, onContext, styleElement } = hidden(tabContainer);
+	const { onClose, onContext, styleElement } = hidden(tabContainer);
 	tabContainer.removeEventListener('TabClose', onClose, false);
 	contextMenu.removeEventListener('popupshowing', onContext, false);
 	styleElement.remove();

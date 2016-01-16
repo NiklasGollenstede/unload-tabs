@@ -1,7 +1,7 @@
 {
 	"name": "unloadtab",
 	"title": "UnloadTab",
-	"version": "0.1.5",
+	"version": "0.3.0",
 	"description": "Yet another bartab clone",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
@@ -10,7 +10,7 @@
 		"Philipp von Weitershausen"
 	],
 	"engines": {
-		"firefox": ">=38"
+		"firefox": ">=38.0"
 	},
 	"license": "MPL 2.0",
 	"permissions": {
