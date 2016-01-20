@@ -4,7 +4,7 @@ const { Cc,  Ci,  Cu, } = require("chrome");
 const { viewFor, } = require("sdk/view/core");
 const Windows = require("sdk/windows").browserWindows;
 const NameSpace = require('sdk/core/namespace').ns;
-const { prefs: Prefs, } = require("sdk/simple-prefs");
+const Prefs = require("sdk/simple-prefs");
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
@@ -13,6 +13,11 @@ const toBase64 = btoa;
 function log() { console.log.apply(console, arguments); return arguments[arguments.length - 1]; }
 
 let _private; // NameSpace to add private values to xul elements
+
+const unloadedTabStyle = () => `
+	.tabbrowser-tab[pending=true], menuitem.alltabs-item[pending=true] {
+		${ Prefs.prefs.tabStyle.replace(/[\{\}]/g, '') }
+	}`;
 
 const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
 	@namespace url(http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul);
@@ -28,10 +33,20 @@ const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
 		opacity: .5;
 	}
 
-	.tabbrowser-tab[pending=true], menuitem.alltabs-item[pending=true] {
-		${ Prefs.tabStyle.replace(/[\{\}]/g, '') }
-	}
+	${ unloadedTabStyle() }
 `) +'"';
+
+/**
+ * Listen for CSS setting changes
+ */
+Prefs.on('tabStyle', () => {
+	Array.forEach(Windows, window => {
+		const style = _private(viewFor(window).gBrowser).styleElement;
+		if (!style) { return; }
+		style.sheet.deleteRule(style.sheet.cssRules.length - 1);
+		style.sheet.insertRule(unloadedTabStyle(), style.sheet.cssRules.length);
+	});
+});
 
 /**
  * find closest tab tat is not pending, i.e. loaded
@@ -181,7 +196,7 @@ function windowClosed(window) {
  */
 function startup() {
 	_private = new NameSpace();
-	Array.prototype.forEach.call(Windows, windowOpened);
+	Array.forEach(Windows, windowOpened);
 	Windows.on('open', windowOpened);
 	Windows.on('close', windowClosed);
 }
