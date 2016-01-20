@@ -1,7 +1,7 @@
 {
 	"name": "unloadtab",
 	"title": "UnloadTab",
-	"version": "0.3.0",
+	"version": "0.3.2",
 	"description": "Yet another bartab clone",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
@@ -24,13 +24,6 @@
 			"description": "a set of css rules to apply to unloaded tabs",
 			"type": "string",
 			"value": "opacity: .5;"
-		},
-		{
-			"name": "debug",
-			"title": "Debug mode",
-			"description": "If enabled, all functions and hooks are exposed on the xul elements.\nRequires restart of the addon (or the browser)",
-			"type": "bool",
-			"value": false
 		}
 	]
 }

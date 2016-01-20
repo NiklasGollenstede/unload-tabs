@@ -1,10 +1,10 @@
 'use strict';
 
 const { Cc,  Ci,  Cu, } = require("chrome");
-const { viewFor } = require("sdk/view/core");
+const { viewFor, } = require("sdk/view/core");
 const Windows = require("sdk/windows").browserWindows;
 const NameSpace = require('sdk/core/namespace').ns;
-const Prefs = require("sdk/simple-prefs");
+const { prefs: Prefs, } = require("sdk/simple-prefs");
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
@@ -12,7 +12,7 @@ const toBase64 = btoa;
 
 function log() { console.log.apply(console, arguments); return arguments[arguments.length - 1]; }
 
-let hidden; // NameSpace to add hidden values to xul elements
+let _private; // NameSpace to add private values to xul elements
 
 const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
 	@namespace url(http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul);
@@ -29,7 +29,7 @@ const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
 	}
 
 	.tabbrowser-tab[pending=true], menuitem.alltabs-item[pending=true] {
-		${ decodeURIComponent(Prefs.prefs.tabStyle.replace(/[\{\}]/g, '')) }
+		${ Prefs.tabStyle.replace(/[\{\}]/g, '') }
 	}
 `) +'"';
 
@@ -116,51 +116,48 @@ function unloadTab(gBrowser, tab) {
  * @param  {high-level window}   window    the window that just opened
  */
 function windowOpened(window) {
-	const { gBrowser } = viewFor(window);
-	const { tabContainer } = gBrowser;
+	const { gBrowser, } = viewFor(window);
+	const { tabContainer, } = gBrowser;
 	// const confirm = gBrowser.contentWindow.confirm.bind(gBrowser.contentWindow);
-	const { contextMenu } = tabContainer;
-	const document = tabContainer.ownerDocument;
+	const { contextMenu, } = tabContainer;
+	const document = tabContainer.ownerDocument; // TODO: use gBrowser.document
 
-	const capture = { tab: null, };
+	// const capture = { tab: null, };
+	let currentTab = null;
 	const onContext = event => {
 		const menu = event.target;
-		capture.tab = menu.contextTab || menu.triggerNode;
+		currentTab = menu.contextTab || menu.triggerNode;
 
 		let item = menu.children.context_unloadTab;
 
 		if (!item) {
-			item = menu.ownerDocument.createElement('menuitem');
+			_private(gBrowser).item = item = document.createElement('menuitem');
 			item.id = 'context_unloadTab';
+			item.class = 'menu-iconic';
+			// item.image = 'chrome://browser/skin/menuPanel-exit.png';
 			item.setAttribute('label', 'Unload Tab');
 			menu.insertBefore(item, menu.children.context_reloadTab.nextSibling);
-			item.addEventListener('click', click => {
-				if (click.button) { return; }
-				unloadTab(gBrowser, capture.tab);
-			});
+			item.addEventListener('command', event => unloadTab(gBrowser, currentTab));
 		}
 
-		item[capture.tab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
+		item[currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
 	};
 
-	const onClose = ({ target: tab }) => {
+	const onClose = ({ target: tab, }) => {
 		if (!tab.selected) { return; }
-
 		gBrowser.selectedTab = findClosestNonPending(tabContainer.children, gBrowser.selectedTab);
 	};
 
-	hidden(tabContainer).onClose = onClose;
-	hidden(tabContainer).onContext = onContext;
+	_private(gBrowser).onClose = onClose;
+	_private(gBrowser).onContext = onContext;
 
 	tabContainer.addEventListener('TabClose', onClose, false);
 	contextMenu.addEventListener('popupshowing', onContext, false);
 
-	hidden(tabContainer).styleElement = document.insertBefore(
+	_private(gBrowser).styleElement = document.insertBefore(
 		document.createProcessingInstruction('xml-stylesheet', CSS),
 		document.firstChild
 	);
-
-	Prefs.prefs.debug && (gBrowser.unloadtab = exports);
 }
 /**
  * unloads the addon for a window
@@ -168,28 +165,22 @@ function windowOpened(window) {
  * @param  {high-level window}   window    the window that just closed / is about to close (?)
  */
 function windowClosed(window) {
-	const { gBrowser } = viewFor(window);
-	const { tabContainer } = gBrowser;
-	const { contextMenu } = tabContainer;
+	const { gBrowser, } = viewFor(window);
+	const { tabContainer, } = gBrowser;
+	const { contextMenu, } = tabContainer;
+	const { onClose, onContext, styleElement, item, } = _private(gBrowser);
 
-	{
-		const item = contextMenu.querySelector('#context_unloadTab');
-		item && item.remove();
-	}
-
-	const { onClose, onContext, styleElement } = hidden(tabContainer);
-	tabContainer.removeEventListener('TabClose', onClose, false);
-	contextMenu.removeEventListener('popupshowing', onContext, false);
-	styleElement.remove();
-
-	Prefs.prefs.debug && (gBrowser.unloadtab = null);
+	item && item.remove();
+	tabContainer && tabContainer.removeEventListener('TabClose', onClose, false);
+	contextMenu && contextMenu.removeEventListener('popupshowing', onContext, false);
+	styleElement && styleElement.remove();
 }
 
 /**
  * addons main entry point
  */
 function startup() {
-	hidden = Prefs.prefs.debug ? o => o : NameSpace();
+	_private = new NameSpace();
 	Array.prototype.forEach.call(Windows, windowOpened);
 	Windows.on('open', windowOpened);
 	Windows.on('close', windowClosed);
@@ -202,7 +193,7 @@ function shutdown() {
 	Windows.removeListener('close', windowClosed);
 	Windows.removeListener('open', windowOpened);
 	Array.prototype.forEach.call(Windows, windowClosed);
-	hidden = null;
+	_private = null;
 }
 
 // make sdk run startup
@@ -214,16 +205,3 @@ exports.onUnload = reason => {
 		shutdown();
 	}
 };
-
-// expose all components for debugging, if debugging is activated
-if (Prefs.prefs.debug) {
-	exports.require = require;
-	exports.gSessionStore = gSessionStore;
-	exports.hidden = hidden;
-	exports.findClosestNonPending = findClosestNonPending;
-	exports.unloadTab = unloadTab;
-	exports.windowOpened = windowOpened;
-	exports.windowClosed = windowClosed;
-	exports.startup = startup;
-	exports.shutdown = shutdown;
-}
