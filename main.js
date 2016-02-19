@@ -1,10 +1,12 @@
 'use strict';
 
-const { Cc,  Ci,  Cu, } = require("chrome");
-const { viewFor, } = require("sdk/view/core");
-const Windows = require("sdk/windows").browserWindows;
+const { Cc,  Ci,  Cu, } = require('chrome');
+const { viewFor, } = require('sdk/view/core');
+const Windows = require('sdk/windows').browserWindows;
+const Tabs = require('sdk/tabs');
 const NameSpace = require('sdk/core/namespace').ns;
-const Prefs = require("sdk/simple-prefs");
+const Prefs = require('sdk/simple-prefs');
+const { Hotkey, } = require('sdk/hotkeys');
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
@@ -13,6 +15,7 @@ const toBase64 = btoa;
 function log() { console.log.apply(console, arguments); return arguments[arguments.length - 1]; }
 
 let _private; // NameSpace to add private values to xul elements
+const shortCuts = { };
 
 const unloadedTabStyle = () => `
 	.tabbrowser-tab[pending=true], menuitem.alltabs-item[pending=true] {
@@ -50,12 +53,12 @@ Prefs.on('tabStyle', () => {
 
 /**
  * find closest tab tat is not pending, i.e. loaded
- * @param  {...<tab>} tabs     an iterable collection of xul <tab>'s to search in
+ * @param  {[<tab>]}  tabs     an iterable collection of xul <tab>'s to search in
  * @param  {<tab>}    current  the element in tabs that 'closest' is mesured from
  * @return {<tab>}             may be undefind in no non-pending tab was found
  */
 function findClosestNonPending(tabs, current) {
-	let index = Array.prototype.indexOf.call(tabs, current);
+	let index = Array.indexOf(tabs, current);
 
 	let visibleTab; // closest not hidden tab
 	let hiddenTab; // closest tab, may be hidden
@@ -125,17 +128,31 @@ function unloadTab(gBrowser, tab) {
 /// end copy
 }
 
+function selectNextLoaded(backwards) {
+	const current = viewFor(Tabs.activeTab);
+	const tabs = current.parentNode.children;
+
+	let index = Array.indexOf(tabs, current) + tabs.length, tab;
+	do {
+		index = index + (backwards ? -1 : 1);
+		tab = tabs[index % tabs.length];
+	} while (
+		tab.getAttribute('pending') || tab.getAttribute('hidden')
+	);
+
+	current.ownerDocument.defaultView.gBrowser.selectedTab = tab;
+}
+
 /**
  * initialises the addon for a window
  * called by high-levels Window.on('open', ...)
  * @param  {high-level window}   window    the window that just opened
  */
 function windowOpened(window) {
-	const { gBrowser, } = viewFor(window);
+	const { gBrowser, document, } = viewFor(window);
 	const { tabContainer, } = gBrowser;
 	// const confirm = gBrowser.contentWindow.confirm.bind(gBrowser.contentWindow);
 	const { contextMenu, } = tabContainer;
-	const document = tabContainer.ownerDocument; // TODO: use gBrowser.document
 
 	// const capture = { tab: null, };
 	let currentTab = null;
@@ -199,6 +216,16 @@ function startup() {
 	Array.forEach(Windows, windowOpened);
 	Windows.on('open', windowOpened);
 	Windows.on('close', windowClosed);
+	Object.assign(shortCuts, { // TODO: add change listener for these hotkeys
+		nextLoaded: Prefs.prefs.hotkeyNextLoaded && new Hotkey({
+			combo: Prefs.prefs.hotkeyNextLoaded,
+			onPress: selectNextLoaded.bind(null, false),
+		}),
+		prevLoaded: Prefs.prefs.hotkeyPrevLoaded && new Hotkey({
+			combo: Prefs.prefs.hotkeyPrevLoaded,
+			onPress: selectNextLoaded.bind(null, true),
+		}),
+	});
 }
 
 /**
@@ -208,6 +235,7 @@ function shutdown() {
 	Windows.removeListener('close', windowClosed);
 	Windows.removeListener('open', windowOpened);
 	Array.prototype.forEach.call(Windows, windowClosed);
+	Object.keys(shortCuts).forEach(key => shortCuts[key].destroy() && delete shortCuts[key]);
 	_private = null;
 }
 

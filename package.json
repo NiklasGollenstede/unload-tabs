@@ -1,7 +1,7 @@
 {
 	"name": "unloadtab",
 	"title": "UnloadTab",
-	"version": "0.3.2",
+	"version": "0.4.0",
 	"description": "Yet another bartab clone",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
@@ -24,6 +24,18 @@
 			"description": "a set of css rules to apply to unloaded tabs",
 			"type": "string",
 			"value": "opacity: .5;"
+		}, {
+			"name": "hotkeyNextLoaded",
+			"title": "Next loaded tab",
+			"description": "a hotkey combination to jump to the next visible loaded tab right of the currently selected tab, e.g. 'control-alt-pageup'.",
+			"type": "string",
+			"value": "control-alt-pageup"
+		}, {
+			"name": "hotkeyPrevLoaded",
+			"title": "Previous loaded tab",
+			"description": "a hotkey combination to jump to the previous visible loaded tab left of the currently selected tab, e.g. 'control-alt-pagedown'.",
+			"type": "string",
+			"value": "control-alt-pagedown"
 		}
 	]
 }
