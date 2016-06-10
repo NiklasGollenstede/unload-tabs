@@ -1,8 +1,8 @@
 {
-	"name": "unloadtab",
-	"title": "UnloadTab",
-	"version": "0.4.0",
-	"description": "Yet another bartab clone",
+	"name": "unload-tabs",
+	"title": "UnloadTabs",
+	"version": "0.5.0",
+	"description": "Unload your tabs to free resources",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
 	"contributors": [
@@ -13,6 +13,11 @@
 		"firefox": ">=38.0"
 	},
 	"license": "MPL 2.0",
+	"repository" : {
+		"type" : "git",
+		"url" : "git@github.com:NiklasGollenstede/unload-tabs.git"
+	},
+	"icon": "icon.png",
 	"permissions": {
 		"private-browsing": true,
 		"multiprocess": true

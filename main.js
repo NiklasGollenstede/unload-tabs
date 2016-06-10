@@ -17,10 +17,11 @@ function log() { console.log.apply(console, arguments); return arguments[argumen
 let _private; // NameSpace to add private values to xul elements
 const shortCuts = { };
 
-const unloadedTabStyle = () => `
+const unloadedTabStyle = () => (`
 	.tabbrowser-tab[pending=true], menuitem.alltabs-item[pending=true] {
 		${ Prefs.prefs.tabStyle.replace(/[\{\}]/g, '') }
-	}`;
+	}
+`);
 
 const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
 	@namespace url(http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul);
@@ -128,6 +129,10 @@ function unloadTab(gBrowser, tab) {
 /// end copy
 }
 
+/**
+ * Sets the next tab left or right of the current tab that is loaded as the selected tab.
+ * @param  {bool}  backwards  If true, selects next on the left.
+ */
 function selectNextLoaded(backwards) {
 	const current = viewFor(Tabs.activeTab);
 	const tabs = current.parentNode.children;
@@ -191,6 +196,7 @@ function windowOpened(window) {
 		document.firstChild
 	);
 }
+
 /**
  * unloads the addon for a window
  * called by high-levels Window.on('close', ...)
@@ -234,7 +240,7 @@ function startup() {
 function shutdown() {
 	Windows.removeListener('close', windowClosed);
 	Windows.removeListener('open', windowOpened);
-	Array.prototype.forEach.call(Windows, windowClosed);
+	Array.forEach(Windows, windowClosed);
 	Object.keys(shortCuts).forEach(key => shortCuts[key].destroy() && delete shortCuts[key]);
 	_private = null;
 }
