@@ -1,7 +1,7 @@
 {
 	"name": "unload-tabs",
 	"title": "UnloadTabs",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "Unload your tabs to free resources",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
@@ -26,19 +26,19 @@
 		{
 			"name": "tabStyle",
 			"title": "Unloaded Tab style",
-			"description": "a set of css rules to apply to unloaded tabs",
+			"description": "A set of css rules to apply to unloaded tabs. Default: 'opacity: .5;'",
 			"type": "string",
 			"value": "opacity: .5;"
 		}, {
 			"name": "hotkeyNextLoaded",
 			"title": "Next loaded tab",
-			"description": "a hotkey combination to jump to the next visible loaded tab right of the currently selected tab, e.g. 'control-alt-pageup'.",
+			"description": "A hotkey combination to jump to the next visible loaded tab right of the currently selected tab (requires Add-On disable/enable to apply). Default: 'control-alt-pageup'.",
 			"type": "string",
 			"value": "control-alt-pageup"
 		}, {
 			"name": "hotkeyPrevLoaded",
 			"title": "Previous loaded tab",
-			"description": "a hotkey combination to jump to the previous visible loaded tab left of the currently selected tab, e.g. 'control-alt-pagedown'.",
+			"description": "A hotkey combination to jump to the previous visible loaded tab left of the currently selected tab (requires Add-On disable/enable to apply). Default: 'control-alt-pagedown'.",
 			"type": "string",
 			"value": "control-alt-pagedown"
 		}

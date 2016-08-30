@@ -7,12 +7,15 @@ const Tabs = require('sdk/tabs');
 const NameSpace = require('sdk/core/namespace').ns;
 const Prefs = require('sdk/simple-prefs');
 const { Hotkey, } = require('sdk/hotkeys');
+const baseUrl = require('sdk/self').data.url('../');
+console.log('bu', baseUrl);
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
 const toBase64 = btoa;
 
 function log() { console.log.apply(console, arguments); return arguments[arguments.length - 1]; }
+const forEach = (_=>_).call.bind(Array.prototype.forEach);
 
 let _private; // NameSpace to add private values to xul elements
 const shortCuts = { };
@@ -25,17 +28,25 @@ const unloadedTabStyle = () => (`
 
 const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
 	@namespace url(http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul);
-	#context_unloadTab {
-		list-style-image: url(chrome://browser/skin/menuPanel-exit.png);
-		-moz-image-region: rect(0px, 16px, 16px, 0px);
-		-moz-binding:url(chrome://global/content/bindings/menu.xml#menuitem-iconic-noaccel) !important;
+	#context_unloadTab,
+	#context_unloadOtherTabs
+	{ -moz-binding: url(chrome://global/content/bindings/menu.xml#menuitem-iconic-noaccel) !important; }
+	#context_unloadTab
+	{
+		list-style-image: url(chrome://browser/skin/menuPanel-exit@2x.png);
+		-moz-image-region: rect(0px, 32px, 32px, 0px);
 	}
-	#context_unloadTab > hbox.menu-iconic-left {
-		-moz-appearance: menuimage;
+	#context_unloadOtherTabs
+	{
+		list-style-image: url(${ baseUrl +'icon-others.png' });
+		-moz-image-region: rect(0px, 32px, 32px, 0px);
 	}
-	#context_unloadTab > hbox.menu-iconic-left[disabled] {
-		opacity: .5;
-	}
+	#context_unloadTab       > hbox.menu-iconic-left,
+	#context_unloadOtherTabs > hbox.menu-iconic-left
+	{ -moz-appearance: menuimage; }
+	#context_unloadTab       > hbox.menu-iconic-left[disabled],
+	#context_unloadOtherTabs > hbox.menu-iconic-left[disabled]
+	{ opacity: .5; }
 
 	${ unloadedTabStyle() }
 `) +'"';
@@ -44,7 +55,7 @@ const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
  * Listen for CSS setting changes
  */
 Prefs.on('tabStyle', () => {
-	Array.forEach(Windows, window => {
+	forEach(Windows, window => {
 		const style = _private(viewFor(window).gBrowser).styleElement;
 		if (!style) { return; }
 		style.sheet.deleteRule(style.sheet.cssRules.length - 1);
@@ -130,6 +141,15 @@ function unloadTab(gBrowser, tab) {
 }
 
 /**
+ * Calls `unloadTab` on all tabs in `gBrowser` except for `tab`.
+ * @param  {xul <tabbrowser>}  gBrowser  tabbrowser whose tabs should be unloaded
+ * @param  {<tab>}             tab       A single tab instance to exclude.
+ */
+function unloadOtherTabs(gBrowser, tab) {
+	forEach(tab.parentNode.children, other => other !== tab && unloadTab(gBrowser, other));
+}
+
+/**
  * Sets the next tab left or right of the current tab that is loaded as the selected tab.
  * @param  {bool}  backwards  If true, selects next on the left.
  */
@@ -165,19 +185,25 @@ function windowOpened(window) {
 		const menu = event.target;
 		currentTab = menu.contextTab || menu.triggerNode;
 
-		let item = menu.children.context_unloadTab;
+		let itemThis = menu.children.context_unloadTab, itemOthers;
 
-		if (!item) {
-			_private(gBrowser).item = item = document.createElement('menuitem');
-			item.id = 'context_unloadTab';
-			item.class = 'menu-iconic';
-			// item.image = 'chrome://browser/skin/menuPanel-exit.png';
-			item.setAttribute('label', 'Unload Tab');
-			menu.insertBefore(item, menu.children.context_reloadTab.nextSibling);
-			item.addEventListener('command', event => unloadTab(gBrowser, currentTab));
+		if (!itemThis) {
+			_private(gBrowser).itemThis = itemThis = document.createElement('menuitem');
+			itemThis.id = 'context_unloadTab';
+			itemThis.class = 'menu-iconic';
+			itemThis.setAttribute('label', 'Unload Tab');
+			menu.insertBefore(itemThis, menu.children.context_reloadTab.nextSibling);
+			itemThis.addEventListener('command', event => unloadTab(gBrowser, currentTab));
+
+			_private(gBrowser).itemOthers = itemOthers = document.createElement('menuitem');
+			itemOthers.id = 'context_unloadOtherTabs';
+			itemOthers.class = 'menu-iconic';
+			itemOthers.setAttribute('label', 'Unload Other Tabs');
+			menu.insertBefore(itemOthers, itemThis.nextSibling);
+			itemOthers.addEventListener('command', event => unloadOtherTabs(gBrowser, currentTab));
 		}
 
-		item[currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
+		itemThis[currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
 	};
 
 	const onClose = ({ target: tab, }) => {
@@ -206,9 +232,9 @@ function windowClosed(window) {
 	const { gBrowser, } = viewFor(window);
 	const { tabContainer, } = gBrowser;
 	const { contextMenu, } = tabContainer;
-	const { onClose, onContext, styleElement, item, } = _private(gBrowser);
+	const { onClose, onContext, styleElement, itemThis, } = _private(gBrowser);
 
-	item && item.remove();
+	itemThis && itemThis.remove();
 	tabContainer && tabContainer.removeEventListener('TabClose', onClose, false);
 	contextMenu && contextMenu.removeEventListener('popupshowing', onContext, false);
 	styleElement && styleElement.remove();
@@ -219,7 +245,7 @@ function windowClosed(window) {
  */
 function startup() {
 	_private = new NameSpace();
-	Array.forEach(Windows, windowOpened);
+	forEach(Windows, windowOpened);
 	Windows.on('open', windowOpened);
 	Windows.on('close', windowClosed);
 	Object.assign(shortCuts, { // TODO: add change listener for these hotkeys
@@ -240,7 +266,7 @@ function startup() {
 function shutdown() {
 	Windows.removeListener('close', windowClosed);
 	Windows.removeListener('open', windowOpened);
-	Array.forEach(Windows, windowClosed);
+	forEach(Windows, windowClosed);
 	Object.keys(shortCuts).forEach(key => shortCuts[key].destroy() && delete shortCuts[key]);
 	_private = null;
 }
