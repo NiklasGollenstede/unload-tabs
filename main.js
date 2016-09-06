@@ -8,7 +8,6 @@ const NameSpace = require('sdk/core/namespace').ns;
 const Prefs = require('sdk/simple-prefs');
 const { Hotkey, } = require('sdk/hotkeys');
 const baseUrl = require('sdk/self').data.url('../');
-console.log('bu', baseUrl);
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
@@ -185,7 +184,7 @@ function windowOpened(window) {
 		const menu = event.target;
 		currentTab = menu.contextTab || menu.triggerNode;
 
-		let itemThis = menu.children.context_unloadTab, itemOthers;
+		let itemThis = menu.children.context_unloadTab;
 
 		if (!itemThis) {
 			_private(gBrowser).itemThis = itemThis = document.createElement('menuitem');
@@ -195,6 +194,8 @@ function windowOpened(window) {
 			menu.insertBefore(itemThis, menu.children.context_reloadTab.nextSibling);
 			itemThis.addEventListener('command', event => unloadTab(gBrowser, currentTab));
 
+			let itemOthers = menu.children.context_unloadOtherTabs;
+			itemOthers && itemOthers.remove();
 			_private(gBrowser).itemOthers = itemOthers = document.createElement('menuitem');
 			itemOthers.id = 'context_unloadOtherTabs';
 			itemOthers.class = 'menu-iconic';
@@ -232,11 +233,12 @@ function windowClosed(window) {
 	const { gBrowser, } = viewFor(window);
 	const { tabContainer, } = gBrowser;
 	const { contextMenu, } = tabContainer;
-	const { onClose, onContext, styleElement, itemThis, } = _private(gBrowser);
+	const { onClose, onContext, styleElement, itemThis, itemOthers, } = _private(gBrowser);
 
-	itemThis && itemThis.remove();
+	itemThis     && itemThis.remove();
+	itemOthers   && itemOthers.remove();
 	tabContainer && tabContainer.removeEventListener('TabClose', onClose, false);
-	contextMenu && contextMenu.removeEventListener('popupshowing', onContext, false);
+	contextMenu  && contextMenu.removeEventListener('popupshowing', onContext, false);
 	styleElement && styleElement.remove();
 }
 
