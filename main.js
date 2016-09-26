@@ -104,7 +104,11 @@ function unloadTab(gBrowser, tab) {
 
 	// Move the new tab next to the one we're removing, but not in
 	// front of it as that confuses Tree Style Tab.
-	gBrowser.moveTabTo(newtab, tab._tPos + 1);
+	if (gBrowser.treeStyleTab) {
+		gBrowser.treeStyleTab.moveTabSubtreeTo(newtab, tab._tPos + 1);
+	} else {
+		gBrowser.moveTabTo(newtab, tab._tPos + 1);
+	}
 
 	// Restore tree when using Tree Style Tab
 	if (gBrowser.treeStyleTab) {
