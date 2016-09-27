@@ -1,17 +1,22 @@
 <strong>Features:</strong>
 <ul>
-	<li> adds a context menu entry to<ul>
+	<li> adds a context menu entry to <ul>
 		<li> unload the current loaded tab </li>
 		<li> unload all but the current tab </li>
 	</ul></li>
-	<li> makes clear which tabs are loaded by greying out unloaded tabs<ul>
+	<li> makes clear which tabs are loaded by graying out unloaded tabs<ul>
 		<li> the highlight style can be changed </li>
 	</ul></li>
 	<li> avoids loading tabs when the active tab is closed </li>
-	<li> adds shortcuts to jump no the next/previous loaded tab<ul>
-		<li> the shortcut can be changed (currently requires you to disable/re-enable the add-on)</li>
+	<li> adds shortcuts to jump to the next/previous <b>loaded</b> tab <ul>
+		<li> the shortcut can be changed (currently requires you to disable/re-enable the add-on) </li>
 	</ul></li>
-	<li> compatible with tab groups </li>
+	<li> compatible with <ul>
+		<li> <a href="https://addons.mozilla.org/addon/tab-groups-panorama">Tab Groups</a>: menu items show up in tab overview </li>
+		<li> <a href="https://addons.mozilla.org/addon/tree-style-tab/">Tree Style Tab</a>: additional unload subtree menu entry (the positioning of unloaded tabs in treees is sometimes wrong) </li>
+		<li> <a href="https://addons.mozilla.org/addon/multiple-tab-handler/">Multiple Tab Handler</a>: additional unload selected tabs menu entry </li>
+		
+	</ul></li>
 	<li> can be removed without leaving anything behind --> just try it </li>
 </ul>
 
