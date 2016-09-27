@@ -15,8 +15,10 @@ const toBase64 = btoa;
 
 function log() { console.log.apply(console, arguments); return arguments[arguments.length - 1]; }
 const forEach = (_=>_).call.bind(Array.prototype.forEach);
+const filter  = (_=>_).call.bind(Array.prototype.filter);
 
 let _private; // NameSpace to add private values to xul elements
+const addedMenuItens = new Set();
 const shortCuts = { };
 
 const unloadedTabStyle = () => (`
@@ -90,8 +92,8 @@ function findClosestNonPending(tabs, current) {
 
 /**
  * unloads the given tab by coning its sessionstore state into a new tab and then closing the old one
- * @param  {xul <tabbrowser>} gBrowser tab's tabbrowser
- * @param  {<tab>}            tab      the tab to unload
+ * @param  {<tabbrowser>}  gBrowser  The tab's tabbrowser.
+ * @param  {<tab>}         tab       The tab to unload.
  */
 function unloadTab(gBrowser, tab) {
 	if (tab.getAttribute('pending')) { return; }
@@ -145,17 +147,39 @@ function unloadTab(gBrowser, tab) {
 
 /**
  * Calls `unloadTab` on all tabs in `gBrowser` except for `tab`.
- * @param  {xul <tabbrowser>}  gBrowser  tabbrowser whose tabs should be unloaded
- * @param  {<tab>}             tab       A single tab instance to exclude.
+ * @param  {<tabbrowser>}  gBrowser  Tabbrowser whose tabs should be unloaded.
+ * @param  {<tab>}         tab       A single tab instance to exclude.
  */
 function unloadOtherTabs(gBrowser, tab) {
 	forEach(tab.parentNode.children, other => other !== tab && unloadTab(gBrowser, other));
 }
 
 /**
+ * Calls `unloadTab` on all selected tabs in `gBrowser`.
+ * Gets the selected tabs from the Multiple Tab Handler add-on.
+ * If that is not installed or if the selection is empty, the `tab` parameter is used as selection.
+ * @param  {<tabbrowser>}  gBrowser  Tabbrowser whose tabs should be unloaded.
+ * @param  {<tab>}         tab       A single tab instance to exclude.
+ * @param  {bool}          Invert    Invert selection. If true, all unselected tabs are unloaded.
+ */
+function unloadSelectedTabs(gBrowser, tab, invert) {
+	const { MultipleTabService, } = gBrowser.ownerGlobal;
+	const selected = MultipleTabService && MultipleTabService.getSelectedTabs();
+	if (!selected || !selected.length) {
+		(invert ? unloadOtherTabs : unloadTab)(gBrowser, tab);
+	} else {
+		(!invert ? selected : filter(
+			gBrowser.tabContainer.children,
+			tab => !MultipleTabService.isSelected(tab)
+		))
+		.forEach(tab => unloadTab(gBrowser, tab));
+	}
+}
+
+/**
  * Calls `unloadTab` on this tab and its descendants.
- * @param  {xul <tabbrowser>}  gBrowser  tabbrowser whose tabs should be unloaded
- * @param  {<tab>}             tab       A single tab instance to exclude.
+ * @param  {<tabbrowser>}  gBrowser  Tabbrowser whose tabs should be unloaded.
+ * @param  {<tab>}         tab       The root of the tree to unload.
  */
 function unloadSubtree(gBrowser, tab) {
 	forEach(gBrowser.treeStyleTab.getDescendantTabs(tab), child => unloadTab(gBrowser, child));
@@ -189,7 +213,8 @@ function selectNextLoaded(backwards) {
 function windowOpened(window) {
 	const { gBrowser, document, } = viewFor(window);
 	const { tabContainer, } = gBrowser;
-	const { contextMenu, } = tabContainer;
+	const singleMenu = tabContainer.contextMenu;
+	const mulitMenu = singleMenu.parentNode.children['multipletab-selection-menu'];
 	const self = _private(gBrowser);
 
 	let currentTab = null;
@@ -197,29 +222,29 @@ function windowOpened(window) {
 		const menu = event.target;
 		currentTab = menu.contextTab || menu.triggerNode;
 
-		const itemThis = self.itemThis = addItem(
+		const itemThis = addItem(
 			'context_unloadTab',
-			menu.children.context_reloadTab.nextSibling,
-			'Unload Tab',
-			unloadTab
+			menu.children[menu === singleMenu ? 'context_reloadTab' : 'multipletab-selection-reloadTabs'].nextSibling,
+			menu === singleMenu ? 'Unload Tab' : 'Unload Selected Tabs',
+			event => unloadSelectedTabs(gBrowser, currentTab, false)
 		);
-		const itemOthers = self.itemOthers = addItem(
+		const itemOthers = addItem(
 			'context_unloadOtherTabs',
 			itemThis.nextSibling,
 			'Unload Other Tabs',
-			unloadOtherTabs
+			event => unloadSelectedTabs(gBrowser, currentTab, true)
 		);
-		const itemTree = self.itemTree = gBrowser.treeStyleTab && addItem(
+		const itemTree = menu === singleMenu && gBrowser.treeStyleTab && addItem(
 			'context_unloadSubtree',
 			itemOthers.nextSibling,
 			'Unload Subtree',
-			unloadSubtree
+			event => unloadSubtree(gBrowser, currentTab)
 		);
 
-		itemThis[currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
+		itemThis[menu === singleMenu && currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
 		itemTree && itemTree[!gBrowser.treeStyleTab.hasChildTabs(currentTab) ? 'setAttribute' : 'removeAttribute']('hidden', 'true');
 
-		function addItem(id, next, label, handler) {
+		function addItem(id, next, label, oncommand) {
 			let item = menu.children[id];
 			if (item) { return item; }
 
@@ -228,7 +253,8 @@ function windowOpened(window) {
 			item.class = 'menu-iconic';
 			item.setAttribute('label', label);
 			menu.insertBefore(item, next);
-			item.addEventListener('command', event => handler(gBrowser, currentTab));
+			item.addEventListener('command', oncommand);
+			addedMenuItens.add(item);
 			return item;
 		}
 	};
@@ -242,7 +268,8 @@ function windowOpened(window) {
 	self.onContext = onContext;
 
 	tabContainer.addEventListener('TabClose', onClose, false);
-	contextMenu.addEventListener('popupshowing', onContext, false);
+	singleMenu.addEventListener('popupshowing', onContext, false);
+	mulitMenu && mulitMenu.addEventListener('popupshowing', onContext, false);
 
 	self.styleElement = document.insertBefore(
 		document.createProcessingInstruction('xml-stylesheet', CSS),
@@ -258,14 +285,13 @@ function windowOpened(window) {
 function windowClosed(window) {
 	const { gBrowser, } = viewFor(window);
 	const { tabContainer, } = gBrowser;
-	const { contextMenu, } = tabContainer;
-	const { onClose, onContext, styleElement, itemThis, itemOthers, itemTree, } = _private(gBrowser);
+	const singleMenu = tabContainer.contextMenu;
+	const mulitMenu = singleMenu.parentNode.children['multipletab-selection-menu'];
+	const { onClose, onContext, styleElement, } = _private(gBrowser);
 
-	itemThis     && itemThis.remove();
-	itemOthers   && itemOthers.remove();
-	itemTree     && itemTree.remove();
 	tabContainer && tabContainer.removeEventListener('TabClose', onClose, false);
-	contextMenu  && contextMenu.removeEventListener('popupshowing', onContext, false);
+	singleMenu   && singleMenu.removeEventListener('popupshowing', onContext, false);
+	mulitMenu    && mulitMenu.removeEventListener('popupshowing', onContext, false);
 	styleElement && styleElement.remove();
 }
 
@@ -296,6 +322,7 @@ function shutdown() {
 	Windows.removeListener('close', windowClosed);
 	Windows.removeListener('open', windowOpened);
 	forEach(Windows, windowClosed);
+	addedMenuItens.forEach(item => item.remove());
 	Object.keys(shortCuts).forEach(key => shortCuts[key].destroy() && delete shortCuts[key]);
 	_private = null;
 }
