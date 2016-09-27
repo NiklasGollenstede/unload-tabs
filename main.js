@@ -153,6 +153,16 @@ function unloadOtherTabs(gBrowser, tab) {
 }
 
 /**
+ * Calls `unloadTab` on this tab and its descendants.
+ * @param  {xul <tabbrowser>}  gBrowser  tabbrowser whose tabs should be unloaded
+ * @param  {<tab>}             tab       A single tab instance to exclude.
+ */
+function unloadSubtree(gBrowser, tab) {
+	forEach(gBrowser.treeStyleTab.getDescendantTabs(tab), child => unloadTab(gBrowser, child));
+	unloadTab(gBrowser, tab);
+}
+
+/**
  * Sets the next tab left or right of the current tab that is loaded as the selected tab.
  * @param  {bool}  backwards  If true, selects next on the left.
  */
@@ -209,6 +219,19 @@ function windowOpened(window) {
 		}
 
 		itemThis[currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
+
+		if (gBrowser.treeStyleTab) {
+			let itemTree = menu.children.context_unloadSubtree;
+			itemTree && itemTree.remove();
+			if (gBrowser.treeStyleTab.hasChildTabs(currentTab)) {
+				_private(gBrowser).itemTree = itemTree = document.createElement('menuitem');
+				itemTree.id = 'context_unloadSubtree';
+				itemTree.class = 'menu-iconic';
+				itemTree.setAttribute('label', 'Unload Subtree');
+				menu.insertBefore(itemTree, menu.children.context_unloadOtherTabs.nextSibling);
+				itemTree.addEventListener('command', event => unloadSubtree(gBrowser, currentTab));
+			}
+		}
 	};
 
 	const onClose = ({ target: tab, }) => {
