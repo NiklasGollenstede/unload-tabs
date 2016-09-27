@@ -217,7 +217,7 @@ function windowOpened(window) {
 		);
 
 		itemThis[currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
-		itemTree && itemThis[!gBrowser.treeStyleTab.hasChildTabs(currentTab) ? 'setAttribute' : 'removeAttribute']('hidden', 'true');
+		itemTree && itemTree[!gBrowser.treeStyleTab.hasChildTabs(currentTab) ? 'setAttribute' : 'removeAttribute']('hidden', 'true');
 
 		function addItem(id, next, label, handler) {
 			let item = menu.children[id];
