@@ -21,11 +21,11 @@ const shortCuts = { };
 
 const unloadedTabStyle = () => (`
 	.tabbrowser-tab[pending=true], menuitem.alltabs-item[pending=true] {
-		${ Prefs.prefs.tabStyle.replace(/[\{\}]/g, '') }
+		`+ Prefs.prefs.tabStyle.replace(/[\{\}]/g, '') +`
 	}
 `);
 
-const CSS = 'href="data:text/css;base64,'+ toBase64(String.raw`
+const CSS = 'href="data:text/css;base64,'+ toBase64(`
 	@namespace url(http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul);
 	#context_unloadTab,
 	#context_unloadOtherTabs
@@ -189,48 +189,47 @@ function selectNextLoaded(backwards) {
 function windowOpened(window) {
 	const { gBrowser, document, } = viewFor(window);
 	const { tabContainer, } = gBrowser;
-	// const confirm = gBrowser.contentWindow.confirm.bind(gBrowser.contentWindow);
 	const { contextMenu, } = tabContainer;
+	const self = _private(gBrowser);
 
-	// const capture = { tab: null, };
 	let currentTab = null;
 	const onContext = event => {
 		const menu = event.target;
 		currentTab = menu.contextTab || menu.triggerNode;
 
-		let itemThis = menu.children.context_unloadTab;
-
-		if (!itemThis) {
-			_private(gBrowser).itemThis = itemThis = document.createElement('menuitem');
-			itemThis.id = 'context_unloadTab';
-			itemThis.class = 'menu-iconic';
-			itemThis.setAttribute('label', 'Unload Tab');
-			menu.insertBefore(itemThis, menu.children.context_reloadTab.nextSibling);
-			itemThis.addEventListener('command', event => unloadTab(gBrowser, currentTab));
-
-			let itemOthers = menu.children.context_unloadOtherTabs;
-			itemOthers && itemOthers.remove();
-			_private(gBrowser).itemOthers = itemOthers = document.createElement('menuitem');
-			itemOthers.id = 'context_unloadOtherTabs';
-			itemOthers.class = 'menu-iconic';
-			itemOthers.setAttribute('label', 'Unload Other Tabs');
-			menu.insertBefore(itemOthers, itemThis.nextSibling);
-			itemOthers.addEventListener('command', event => unloadOtherTabs(gBrowser, currentTab));
-		}
+		const itemThis = self.itemThis = addItem(
+			'context_unloadTab',
+			menu.children.context_reloadTab.nextSibling,
+			'Unload Tab',
+			unloadTab
+		);
+		const itemOthers = self.itemOthers = addItem(
+			'context_unloadOtherTabs',
+			itemThis.nextSibling,
+			'Unload Other Tabs',
+			unloadOtherTabs
+		);
+		const itemTree = self.itemTree = gBrowser.treeStyleTab && addItem(
+			'context_unloadSubtree',
+			itemOthers.nextSibling,
+			'Unload Subtree',
+			unloadSubtree
+		);
 
 		itemThis[currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
+		itemTree && itemThis[!gBrowser.treeStyleTab.hasChildTabs(currentTab) ? 'setAttribute' : 'removeAttribute']('hidden', 'true');
 
-		if (gBrowser.treeStyleTab) {
-			let itemTree = menu.children.context_unloadSubtree;
-			itemTree && itemTree.remove();
-			if (gBrowser.treeStyleTab.hasChildTabs(currentTab)) {
-				_private(gBrowser).itemTree = itemTree = document.createElement('menuitem');
-				itemTree.id = 'context_unloadSubtree';
-				itemTree.class = 'menu-iconic';
-				itemTree.setAttribute('label', 'Unload Subtree');
-				menu.insertBefore(itemTree, menu.children.context_unloadOtherTabs.nextSibling);
-				itemTree.addEventListener('command', event => unloadSubtree(gBrowser, currentTab));
-			}
+		function addItem(id, next, label, handler) {
+			let item = menu.children[id];
+			if (item) { return item; }
+
+			item = document.createElement('menuitem');
+			item.id = id;
+			item.class = 'menu-iconic';
+			item.setAttribute('label', label);
+			menu.insertBefore(item, next);
+			item.addEventListener('command', event => handler(gBrowser, currentTab));
+			return item;
 		}
 	};
 
@@ -239,13 +238,13 @@ function windowOpened(window) {
 		gBrowser.selectedTab = findClosestNonPending(tabContainer.children, gBrowser.selectedTab);
 	};
 
-	_private(gBrowser).onClose = onClose;
-	_private(gBrowser).onContext = onContext;
+	self.onClose = onClose;
+	self.onContext = onContext;
 
 	tabContainer.addEventListener('TabClose', onClose, false);
 	contextMenu.addEventListener('popupshowing', onContext, false);
 
-	_private(gBrowser).styleElement = document.insertBefore(
+	self.styleElement = document.insertBefore(
 		document.createProcessingInstruction('xml-stylesheet', CSS),
 		document.firstChild
 	);
@@ -260,10 +259,11 @@ function windowClosed(window) {
 	const { gBrowser, } = viewFor(window);
 	const { tabContainer, } = gBrowser;
 	const { contextMenu, } = tabContainer;
-	const { onClose, onContext, styleElement, itemThis, itemOthers, } = _private(gBrowser);
+	const { onClose, onContext, styleElement, itemThis, itemOthers, itemTree, } = _private(gBrowser);
 
 	itemThis     && itemThis.remove();
 	itemOthers   && itemOthers.remove();
+	itemTree     && itemTree.remove();
 	tabContainer && tabContainer.removeEventListener('TabClose', onClose, false);
 	contextMenu  && contextMenu.removeEventListener('popupshowing', onContext, false);
 	styleElement && styleElement.remove();
