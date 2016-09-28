@@ -237,7 +237,7 @@ function windowOpened(window) {
 		const itemTree = menu === singleMenu && gBrowser.treeStyleTab && addItem(
 			'context_unloadSubtree',
 			itemOthers.nextSibling,
-			'Unload Subtree',
+			'Unload this Tree',
 			event => unloadSubtree(gBrowser, currentTab)
 		);
 
