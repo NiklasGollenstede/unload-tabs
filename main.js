@@ -151,7 +151,7 @@ function unloadTab(gBrowser, tab) {
  * @param  {<tab>}         tab       A single tab instance to exclude.
  */
 function unloadOtherTabs(gBrowser, tab) {
-	forEach(tab.parentNode.children, other => other !== tab && unloadTab(gBrowser, other));
+	forEach(gBrowser.visibleTabs, other => other !== tab && unloadTab(gBrowser, other));
 }
 
 /**
