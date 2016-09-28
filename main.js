@@ -6,6 +6,7 @@ const Windows = require('sdk/windows').browserWindows;
 const Tabs = require('sdk/tabs');
 const NameSpace = require('sdk/core/namespace').ns;
 const Prefs = require('sdk/simple-prefs');
+const PrefService = require('sdk/preferences/service');
 const { Hotkey, } = require('sdk/hotkeys');
 const baseUrl = require('sdk/self').data.url('../');
 
@@ -65,19 +66,18 @@ Prefs.on('tabStyle', () => {
 });
 
 /**
- * find closest tab tat is not pending, i.e. loaded
- * @param  {[<tab>]}  tabs     an iterable collection of xul <tab>'s to search in
- * @param  {<tab>}    current  the element in tabs that 'closest' is mesured from
- * @return {<tab>}             may be undefind in no non-pending tab was found
+ * Finds the closest tab that is visible and not pending, i.e. loaded
+ * @param  {[<tab>]}  tabs     An array-like collection of xul <tab>'s to search in.
+ * @param  {<tab>}    current  The element in tabs that 'closest' is measured from.
+ * @return {<tab>}             May be undefined in no non-pending and visible tab was found.
  */
 function findClosestNonPending(tabs, current) {
 	let index = Array.indexOf(tabs, current);
 
 	let visibleTab; // closest not hidden tab
-	let hiddenTab; // closest tab, may be hidden
 
 	function isGood(tab) {
-		return tab && !tab.getAttribute('pending') && (hiddenTab = hiddenTab || tab) && !tab.getAttribute('hidden') && (visibleTab = tab);
+		return tab && !tab.getAttribute('pending') && !tab.getAttribute('hidden') && (visibleTab = tab);
 	}
 
 	// search up and down at the same time, looking for a loaded tabs, stopping once a loaded and not hidden tab is found
@@ -87,11 +87,11 @@ function findClosestNonPending(tabs, current) {
 		--j, ++i
 	) { }
 
-	return visibleTab || hiddenTab;
+	return visibleTab;
 }
 
 /**
- * unloads the given tab by coning its sessionstore state into a new tab and then closing the old one
+ * Unloads the given tab by cloning its SessionStore state into a new tab and then closing the old one.
  * @param  {<tabbrowser>}  gBrowser  The tab's tabbrowser.
  * @param  {<tab>}         tab       The tab to unload.
  */
@@ -129,8 +129,9 @@ function unloadTab(gBrowser, tab) {
 /// end copy
 
 	if (tab.selected) {
-		// select an other tab, won't work if 'tab' is only tab
-		gBrowser.selectedTab = findClosestNonPending(tab.parentNode.children, tab);
+		// select an other tab, open a default tab if none is found
+		gBrowser.selectedTab = findClosestNonPending(tab.parentNode.children, tab)
+		|| gBrowser.addTab(PrefService.get('browser.newtab.url') || 'about:newtab');
 	}
 
 /// copied from bartablitex@szabolcs.hubai
@@ -169,7 +170,7 @@ function unloadSelectedTabs(gBrowser, tab, invert) {
 		(invert ? unloadOtherTabs : unloadTab)(gBrowser, tab);
 	} else {
 		(!invert ? selected : filter(
-			gBrowser.tabContainer.children,
+			gBrowser.visibleTabs,
 			tab => !MultipleTabService.isSelected(tab)
 		))
 		.forEach(tab => unloadTab(gBrowser, tab));
