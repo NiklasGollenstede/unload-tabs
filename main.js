@@ -151,7 +151,7 @@ function unloadTab(gBrowser, tab) {
  * @param  {<tab>}         tab       A single tab instance to exclude.
  */
 function unloadOtherTabs(gBrowser, tab) {
-	forEach(tab.parentNode.children, other => other !== tab && unloadTab(gBrowser, other));
+	forEach(gBrowser.visibleTabs, other => other !== tab && unloadTab(gBrowser, other));
 }
 
 /**
@@ -237,7 +237,7 @@ function windowOpened(window) {
 		const itemTree = menu === singleMenu && gBrowser.treeStyleTab && addItem(
 			'context_unloadSubtree',
 			itemOthers.nextSibling,
-			'Unload Subtree',
+			'Unload this Tree',
 			event => unloadSubtree(gBrowser, currentTab)
 		);
 
