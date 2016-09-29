@@ -117,7 +117,7 @@ function unloadTab(gBrowser, tab) {
 		let parent = gBrowser.treeStyleTab.getParentTab(tab);
 		if (parent) {
 			gBrowser.treeStyleTab.attachTabTo(newtab, parent,
-				{dontAnimate: true, insertBefore: tab.nextSibling});
+				{dontAnimate: true, insertBefore: gBrowser.treeStyleTab.getNextTab(tab)});
 		}
 		let children = gBrowser.treeStyleTab.getChildTabs(tab);
 		children.forEach(function(aChild) {
@@ -136,11 +136,12 @@ function unloadTab(gBrowser, tab) {
 
 /// copied from bartablitex@szabolcs.hubai
 
-	// Close the original tab.  We're taking the long way round to
-	// ensure the nsISessionStore service won't save this in the
-	// recently closed tabs.
-	if (gBrowser._beginRemoveTab(tab, true, null, false)) {
-		gBrowser._endRemoveTab(tab);
+	// Close the original tab and remove it from the recently closed tabs list
+	let gWindow = gBrowser.ownerGlobal;
+	let lastClosedTabCount = gSessionStore.getClosedTabCount(gWindow);
+	gBrowser.removeTab(tab);
+	if (gSessionStore.getClosedTabCount(gWindow) === lastClosedTabCount + 1) {
+		gSessionStore.forgetClosedTab(gBrowser.ownerGlobal, 0);
 	}
 
 /// end copy
