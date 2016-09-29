@@ -136,8 +136,12 @@ function unloadTab(gBrowser, tab) {
 /// copied from bartablitex@szabolcs.hubai
 
 	// Close the original tab and remove it from the recently closed tabs list
+	let gWindow = gBrowser.ownerGlobal;
+	let lastClosedTabCount = gSessionStore.getClosedTabCount(gWindow);
 	gBrowser.removeTab(tab);
-	gSessionStore.forgetClosedTab(gBrowser.ownerGlobal, 0);
+	if (gSessionStore.getClosedTabCount(gWindow) === lastClosedTabCount + 1) {
+		gSessionStore.forgetClosedTab(gBrowser.ownerGlobal, 0);
+	}
 
 /// end copy
 }
