@@ -10,7 +10,6 @@ const { Hotkey, } = require('sdk/hotkeys');
 const baseUrl = require('sdk/self').data.url('../');
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
-const SessionStoreNS = Cu.import('resource:///modules/sessionstore/SessionStore.jsm', {});
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
 const toBase64 = btoa;
 
@@ -138,7 +137,7 @@ function unloadTab(gBrowser, tab) {
 
 	// Close the original tab and remove it from the recently closed tabs list
 	gBrowser.removeTab(tab);
-	SessionStoreNS.SessionStoreInternal.forgetClosedTab(gBrowser.ownerGlobal);
+	gSessionStore.forgetClosedTab(gBrowser.ownerGlobal, 0);
 
 /// end copy
 }
