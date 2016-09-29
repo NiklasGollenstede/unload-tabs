@@ -6,7 +6,6 @@ const Windows = require('sdk/windows').browserWindows;
 const Tabs = require('sdk/tabs');
 const NameSpace = require('sdk/core/namespace').ns;
 const Prefs = require('sdk/simple-prefs');
-const PrefService = require('sdk/preferences/service');
 const { Hotkey, } = require('sdk/hotkeys');
 const baseUrl = require('sdk/self').data.url('../');
 
@@ -72,79 +71,68 @@ Prefs.on('tabStyle', () => {
  * @return {<tab>}             May be undefined in no non-pending and visible tab was found.
  */
 function findClosestNonPending(tabs, current) {
-	let index = Array.indexOf(tabs, current);
+	const index = Array.indexOf(tabs, current);
+	let   found = null; // closest loaded tab
 
-	let visibleTab; // closest not hidden tab
-
-	function isGood(tab) {
-		return tab && !tab.getAttribute('pending') && !tab.getAttribute('hidden') && (visibleTab = tab);
+	function find(tab) {
+		return tab && !tab.getAttribute('pending') && (found = tab);
 	}
 
 	// search up and down at the same time, looking for a loaded tabs, stopping once a loaded and not hidden tab is found
 	for (
 		let j = index - 1, i = index + 1, length = tabs.length;
-		(j >= 0 || i < length) && !(isGood(tabs[j]) || isGood(tabs[i]));
+		(j >= 0 || i < length) && !(find(tabs[j]) || find(tabs[i]));
 		--j, ++i
 	) { }
 
-	return visibleTab;
+	return found;
 }
 
 /**
  * Unloads the given tab by cloning its SessionStore state into a new tab and then closing the old one.
+ * @author  Significant portions of the code in this function originate from the add-on `bartablitex@szabolcs.hubai`.
  * @param  {<tabbrowser>}  gBrowser  The tab's tabbrowser.
  * @param  {<tab>}         tab       The tab to unload.
  */
 function unloadTab(gBrowser, tab) {
 	if (tab.getAttribute('pending')) { return; }
 
-/// copied from bartablitex@szabolcs.hubai
-
-	// clone tabs SessionStore state into a new tab
-	let newtab = gBrowser.addTab(null, {skipAnimation: true});
-	gSessionStore.setTabState(newtab, gSessionStore.getTabState(tab));
-
-	// Move the new tab next to the one we're removing, but not in
-	// front of it as that confuses Tree Style Tab.
-	if (gBrowser.treeStyleTab) {
-		gBrowser.treeStyleTab.moveTabSubtreeTo(newtab, tab._tPos + 1);
-	} else {
-		gBrowser.moveTabTo(newtab, tab._tPos + 1);
-	}
-
-	// Restore tree when using Tree Style Tab
-	if (gBrowser.treeStyleTab) {
-		let parent = gBrowser.treeStyleTab.getParentTab(tab);
-		if (parent) {
-			gBrowser.treeStyleTab.attachTabTo(newtab, parent,
-				{dontAnimate: true, insertBefore: gBrowser.treeStyleTab.getNextTab(tab)});
-		}
-		let children = gBrowser.treeStyleTab.getChildTabs(tab);
-		children.forEach(function(aChild) {
-			gBrowser.treeStyleTab.attachTabTo(
-				aChild, newtab, {dontAnimate: true});
-		});
-	}
-
-/// end copy
-
 	if (tab.selected) {
 		// select an other tab, open a default tab if none is found
-		gBrowser.selectedTab = findClosestNonPending(tab.parentNode.children, tab)
-		|| gBrowser.addTab(PrefService.get('browser.newtab.url') || 'about:newtab');
+		gBrowser.selectedTab = findClosestNonPending(gBrowser.visibleTabs, tab)
+		|| gBrowser.addTab(Prefs.newtabUrl || 'about:newtab');
 	}
 
-/// copied from bartablitex@szabolcs.hubai
+	// clone tabs SessionStore state into a new tab
+	const newtab = gBrowser.addTab(null, { skipAnimation: true, });
+	gSessionStore.setTabState(newtab, gSessionStore.getTabState(tab));
 
-	// Close the original tab and remove it from the recently closed tabs list
-	let gWindow = gBrowser.ownerGlobal;
-	let lastClosedTabCount = gSessionStore.getClosedTabCount(gWindow);
-	gBrowser.removeTab(tab);
-	if (gSessionStore.getClosedTabCount(gWindow) === lastClosedTabCount + 1) {
+
+	if (!gBrowser.treeStyleTab) {
+		// restore the position
+		gBrowser.moveTabTo(newtab, tab._tPos + 1);
+
+		// close the original tab. We're taking the long way round to ensure
+		// the gSessionStore service won't save this in the recently closed tabs.
+		if (gBrowser._beginRemoveTab(tab, true, null, false)) {
+			gBrowser._endRemoveTab(tab);
+		}
+	} else {
+		// restore the position in the tree
+		gBrowser.treeStyleTab.moveTabSubtreeTo(newtab, tab._tPos + 1);
+		const parent = gBrowser.treeStyleTab.getParentTab(tab);
+		parent && gBrowser.treeStyleTab.attachTabTo(newtab, parent, {
+			dontAnimate: true, insertBefore: gBrowser.treeStyleTab.getNextTab(tab),
+		});
+		gBrowser.treeStyleTab.getChildTabs(tab).forEach(child => {
+			gBrowser.treeStyleTab.attachTabTo(child, newtab, { dontAnimate: true, });
+		});
+
+		// close the original tab and remove it from the recently closed tabs list
+		// using _beginRemoveTab() and _endRemoveTab() confuses Tree Style Tabs
+		gBrowser.removeTab(tab);
 		gSessionStore.forgetClosedTab(gBrowser.ownerGlobal, 0);
 	}
-
-/// end copy
 }
 
 /**
