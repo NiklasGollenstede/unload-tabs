@@ -10,6 +10,7 @@ const { Hotkey, } = require('sdk/hotkeys');
 const baseUrl = require('sdk/self').data.url('../');
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
+const SessionStoreNS = Cu.import('resource:///modules/sessionstore/SessionStore.jsm', {});
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
 const toBase64 = btoa;
 
@@ -117,7 +118,7 @@ function unloadTab(gBrowser, tab) {
 		let parent = gBrowser.treeStyleTab.getParentTab(tab);
 		if (parent) {
 			gBrowser.treeStyleTab.attachTabTo(newtab, parent,
-				{dontAnimate: true, insertBefore: tab.nextSibling});
+				{dontAnimate: true, insertBefore: gBrowser.treeStyleTab.getNextTab(tab)});
 		}
 		let children = gBrowser.treeStyleTab.getChildTabs(tab);
 		children.forEach(function(aChild) {
@@ -135,12 +136,9 @@ function unloadTab(gBrowser, tab) {
 
 /// copied from bartablitex@szabolcs.hubai
 
-	// Close the original tab.  We're taking the long way round to
-	// ensure the nsISessionStore service won't save this in the
-	// recently closed tabs.
-	if (gBrowser._beginRemoveTab(tab, true, null, false)) {
-		gBrowser._endRemoveTab(tab);
-	}
+	// Close the original tab and remove it from the recently closed tabs list
+	gBrowser.removeTab(tab);
+	SessionStoreNS.SessionStoreInternal.forgetClosedTab(gBrowser.ownerGlobal);
 
 /// end copy
 }
