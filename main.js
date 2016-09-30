@@ -10,12 +10,15 @@ const { Hotkey, } = require('sdk/hotkeys');
 const baseUrl = require('sdk/self').data.url('../');
 
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
+const { Services } = require('resource://gre/modules/Services.jsm');
+const browserPrefs = Services.prefs.getBranch('browser.');
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
 const toBase64 = btoa;
 
 function log() { console.log.apply(console, arguments); return arguments[arguments.length - 1]; }
 const forEach = (_=>_).call.bind(Array.prototype.forEach);
 const filter  = (_=>_).call.bind(Array.prototype.filter);
+const indexOf = (_=>_).call.bind(Array.prototype.indexOf);
 
 let _private; // NameSpace to add private values to xul elements
 const addedMenuItens = new Set();
@@ -71,7 +74,7 @@ Prefs.on('tabStyle', () => {
  * @return {<tab>}             May be undefined in no non-pending and visible tab was found.
  */
 function findClosestNonPending(tabs, current) {
-	const index = Array.indexOf(tabs, current);
+	const index = indexOf(tabs, current);
 	let   found = null; // closest loaded tab
 
 	function find(tab) {
@@ -112,8 +115,7 @@ function unloadTab(gBrowser, tab) {
 		// restore the position
 		gBrowser.moveTabTo(newtab, tab._tPos + 1);
 
-		// close the original tab. We're taking the long way round to ensure
-		// the gSessionStore service won't save this in the recently closed tabs.
+		// close the original tab, but skip animations and the gSessionStore
 		if (gBrowser._beginRemoveTab(tab, true, null, false)) {
 			gBrowser._endRemoveTab(tab);
 		}
@@ -130,8 +132,15 @@ function unloadTab(gBrowser, tab) {
 
 		// close the original tab and remove it from the recently closed tabs list
 		// using _beginRemoveTab() and _endRemoveTab() confuses Tree Style Tabs
+		const gWindow = gBrowser.ownerGlobal;
+		const maxTabsUndo = browserPrefs.getIntPref('sessionstore.max_tabs_undo');
+		const lastClosedTabCount = gSessionStore.getClosedTabCount(gWindow);
+		browserPrefs.setIntPref('sessionstore.max_tabs_undo', maxTabsUndo + 1);
 		gBrowser.removeTab(tab);
-		gSessionStore.forgetClosedTab(gBrowser.ownerGlobal, 0);
+		if (gSessionStore.getClosedTabCount(gWindow) === lastClosedTabCount + 1) {
+			gSessionStore.forgetClosedTab(gWindow, 0);
+		}
+		browserPrefs.setIntPref('sessionstore.max_tabs_undo', maxTabsUndo); // will remove the last entry
 	}
 }
 
