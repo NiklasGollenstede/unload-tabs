@@ -68,17 +68,18 @@ Prefs.on('tabStyle', () => {
 });
 
 /**
- * Finds the closest tab that is visible and not pending, i.e. loaded
+ * Finds the closest not pending (i.e. loaded) tab in an array of tabs.
  * @param  {[<tab>]}  tabs     An array-like collection of xul <tab>'s to search in.
  * @param  {<tab>}    current  The element in tabs that 'closest' is measured from.
- * @return {<tab>}             May be undefined in no non-pending and visible tab was found.
+ * @return {<tab>}             `null` if no non-pending tab was found or if `current` is not in `tabs`.
  */
-function findClosestNonPending(tabs, current) {
+function findClosestNonPending(tabs, current, filter = _=>true) {
 	const index = indexOf(tabs, current);
-	let   found = null; // closest loaded tab
+	if (index < 0) { return null; }
+	let found = null; // closest loaded tab
 
 	function find(tab) {
-		return tab && !tab.getAttribute('pending') && (found = tab);
+		return tab && !tab.getAttribute('pending') && filter(tab) && (found = tab);
 	}
 
 	// search up and down at the same time, looking for a loaded tabs, stopping once a loaded and not hidden tab is found
@@ -217,7 +218,7 @@ function windowOpened(window) {
 	const self = _private(gBrowser);
 
 	let currentTab = null;
-	const onContext = event => {
+	const onContext = self.onContext = event => {
 		const menu = event.target;
 		currentTab = menu.contextTab || menu.triggerNode;
 
@@ -258,13 +259,10 @@ function windowOpened(window) {
 		}
 	};
 
-	const onClose = ({ target: tab, }) => {
+	const onClose = self.onClose = ({ target: tab, }) => {
 		if (!tab.selected) { return; }
-		gBrowser.selectedTab = findClosestNonPending(tabContainer.children, gBrowser.selectedTab);
+		gBrowser.selectedTab = findClosestNonPending(tabContainer.children, tab, _=>!_.getAttribute('hidden'));
 	};
-
-	self.onClose = onClose;
-	self.onContext = onContext;
 
 	tabContainer.addEventListener('TabClose', onClose, false);
 	singleMenu.addEventListener('popupshowing', onContext, false);

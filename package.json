@@ -1,7 +1,7 @@
 {
 	"name": "unload-tabs",
 	"title": "UnloadTabs",
-	"version": "0.7.0-b2",
+	"version": "0.7.0-b5",
 	"description": "Unload your tabs to free resources",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
