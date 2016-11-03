@@ -100,6 +100,7 @@ function findClosestNonPending(tabs, current, filter = _=>true) {
  */
 function unloadTab(gBrowser, tab) {
 	if (tab.getAttribute('pending')) { return; }
+	const userContextId = tab.getAttribute('usercontextid') || '';
 
 	if (tab.selected) {
 		// select an other tab, open a default tab if none is found
@@ -108,7 +109,7 @@ function unloadTab(gBrowser, tab) {
 	}
 
 	// clone tabs SessionStore state into a new tab
-	const newtab = gBrowser.addTab(null, { skipAnimation: true, });
+	const newtab = gBrowser.addTab(null, { skipAnimation: true, userContextId, });
 	gSessionStore.setTabState(newtab, gSessionStore.getTabState(tab));
 
 

@@ -1,7 +1,7 @@
 {
 	"name": "unload-tabs",
 	"title": "UnloadTabs",
-	"version": "0.7.0-b5",
+	"version": "0.7.1",
 	"description": "Unload your tabs to free resources",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
@@ -26,9 +26,9 @@
 		{
 			"name": "tabStyle",
 			"title": "Unloaded Tab style",
-			"description": "A set of css rules to apply to unloaded tabs. Default: 'opacity: .5;'",
+			"description": "A set of css rules to apply to unloaded tabs. Default: 'opacity: 0.5;'",
 			"type": "string",
-			"value": "opacity: .5;"
+			"value": "opacity: 0.5;"
 		}, {
 			"name": "hotkeyNextLoaded",
 			"title": "Next loaded tab",
