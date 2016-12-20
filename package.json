@@ -1,7 +1,7 @@
 {
 	"name": "unload-tabs",
 	"title": "UnloadTabs",
-	"version": "0.7.1",
+	"version": "0.7.2-b1",
 	"description": "Unload your tabs to free resources",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
@@ -24,6 +24,18 @@
 	},
 	"preferences": [
 		{
+			"name": "onClose",
+			"title": "Behavior on tab close",
+			"description": "When a tab is closed/unloaded, prefer to focus the tab ...",
+			"type": "menulist",
+			"value": 0,
+			"options": [
+				{ "value": "0", "label": "to the left" },
+				{ "value": "1", "label": "to the right" },
+				{ "value": "2", "label": "that opened the tab, the left" },
+				{ "value": "3", "label": "that opened the tab, the right" }
+			]
+		}, {
 			"name": "tabStyle",
 			"title": "Unloaded Tab style",
 			"description": "A set of css rules to apply to unloaded tabs. Default: 'opacity: 0.5;'",

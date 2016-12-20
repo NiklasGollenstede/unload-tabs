@@ -12,6 +12,7 @@
 		<li> the shortcut can be changed (currently requires you to disable/re-enable the add-on) </li>
 	</ul></li>
 	<li> compatible with <ul>
+		<li> <a href="https://wiki.mozilla.org/Security/Contextual_Identity_Project/Containers">Container Tabs</a>: unloaded tabs stay in the correct container </li>
 		<li> <a href="https://addons.mozilla.org/addon/tab-groups-panorama">Tab Groups</a>: works only on the tabs of the current group, doesn't jump between groups and the menu items show up in the tab overview </li>
 		<li> <a href="https://addons.mozilla.org/addon/tree-style-tab/">Tree Style Tab</a>: additional unload subtree menu entry (the positioning of unloaded tabs in treees is sometimes wrong) </li>
 		<li> <a href="https://addons.mozilla.org/addon/multiple-tab-handler/">Multiple Tab Handler</a>: additional unload selected tabs menu entry </li>
@@ -30,4 +31,4 @@
 </ul>
 
 
-Some of this add-ons code is taken from <a href="https://addons.mozilla.org/en-US/firefox/addon/bartab-lite-x">BarTab Lite X</a> (with the authors admission).
+Some of this add-ons code was originally taken from <a href="https://addons.mozilla.org/en-US/firefox/addon/bartab-lite-x">BarTab Lite X</a> (with the authors admission).

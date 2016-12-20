@@ -1,6 +1,6 @@
 'use strict';
 
-const { Cc,  Ci,  Cu, } = require('chrome');
+const { Cc,  Ci, Cu, } = require('chrome');
 const { viewFor, } = require('sdk/view/core');
 const Windows = require('sdk/windows').browserWindows;
 const Tabs = require('sdk/tabs');
@@ -12,6 +12,7 @@ const baseUrl = require('sdk/self').data.url('../');
 const gSessionStore = Cc["@mozilla.org/browser/sessionstore;1"].getService(Ci.nsISessionStore);
 const { Services } = require('resource://gre/modules/Services.jsm');
 const browserPrefs = Services.prefs.getBranch('browser.');
+const getNewTabURL = Object.getOwnPropertyDescriptor(Cc['@mozilla.org/browser/aboutnewtab-service;1'].getService(Ci.nsIAboutNewTabService), 'newTabURL').get;
 Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
 const toBase64 = btoa;
 
@@ -69,18 +70,33 @@ Prefs.on('tabStyle', () => {
 
 /**
  * Finds the closest not pending (i.e. loaded) tab in an array of tabs.
- * @param  {[<tab>]}  tabs     An array-like collection of xul <tab>'s to search in.
- * @param  {<tab>}    current  The element in tabs that 'closest' is measured from.
- * @return {<tab>}             `null` if no non-pending tab was found or if `current` is not in `tabs`.
+ * @param  {[<tab>]}   tabs     An array-like collection of xul <tab>'s to search in.
+ * @param  {<tab>}     current  The element in tabs that 'closest' is measured from.
+ * @param  {function}  .filter  Optional. If provided, a tab will only be accepted if it is accepted by this predicate.
+ * @param  {<tab>}     .prefer  Optional. If provided and acceptable, this tab will be returned before checking the Array.
+ * @return {<tab>}              `null` if no non-pending tab was found or if `current` is not in `tabs`.
  */
-function findClosestNonPending(tabs, current, filter = _=>true) {
-	const index = indexOf(tabs, current);
-	if (index < 0) { return null; }
+function findClosestNonPending(tabs, current, { filter = _=>true, } = { }) {
 	let found = null; // closest loaded tab
-
 	function find(tab) {
 		return tab && !tab.getAttribute('pending') && filter(tab) && (found = tab);
 	}
+
+	switch (Prefs.prefs.onClose) {
+		case 1: case '1': {
+			if (find(current.nextSibling)) { return current.nextSibling; }
+		} break;
+		case 2: case '2': {
+			if (find(current._lastOwner)) { return current._lastOwner; }
+		} break;
+		case 3: case '3': {
+			if (find(current._lastOwner)) { return current._lastOwner; }
+			if (find(current.nextSibling)) { return current.nextSibling; }
+		} break;
+	}
+
+	const index = indexOf(tabs, current);
+	if (index < 0) { return null; }
 
 	// search up and down at the same time, looking for a loaded tabs, stopping once a loaded and not hidden tab is found
 	for (
@@ -105,17 +121,17 @@ function unloadTab(gBrowser, tab) {
 	if (tab.selected) {
 		// select an other tab, open a default tab if none is found
 		gBrowser.selectedTab = findClosestNonPending(gBrowser.visibleTabs, tab)
-		|| gBrowser.addTab(Prefs.newtabUrl || 'about:newtab');
+		|| gBrowser.addTab(getNewTabURL());
 	}
 
 	// clone tabs SessionStore state into a new tab
-	const newtab = gBrowser.addTab(null, { skipAnimation: true, userContextId, });
-	gSessionStore.setTabState(newtab, gSessionStore.getTabState(tab));
-
+	const newTab = gBrowser.addTab(null, { skipAnimation: true, userContextId, });
+	gSessionStore.setTabState(newTab, gSessionStore.getTabState(tab)); // "resource:///modules/sessionstore/TabState.jsm".clone provides a non-JSON version of this
+	(tab.owner || tab._lastOwner) && (newTab.owner = tab.owner || tab._lastOwner);
 
 	if (!gBrowser.treeStyleTab) {
 		// restore the position
-		gBrowser.moveTabTo(newtab, tab._tPos + 1);
+		gBrowser.moveTabTo(newTab, tab._tPos + 1);
 
 		// close the original tab, but skip animations and the gSessionStore
 		if (gBrowser._beginRemoveTab(tab, true, null, false)) {
@@ -123,13 +139,13 @@ function unloadTab(gBrowser, tab) {
 		}
 	} else {
 		// restore the position in the tree
-		gBrowser.treeStyleTab.moveTabSubtreeTo(newtab, tab._tPos + 1);
+		gBrowser.treeStyleTab.moveTabSubtreeTo(newTab, tab._tPos + 1);
 		const parent = gBrowser.treeStyleTab.getParentTab(tab);
-		parent && gBrowser.treeStyleTab.attachTabTo(newtab, parent, {
+		parent && gBrowser.treeStyleTab.attachTabTo(newTab, parent, {
 			dontAnimate: true, insertBefore: gBrowser.treeStyleTab.getNextTab(tab),
 		});
 		gBrowser.treeStyleTab.getChildTabs(tab).forEach(child => {
-			gBrowser.treeStyleTab.attachTabTo(child, newtab, { dontAnimate: true, });
+			gBrowser.treeStyleTab.attachTabTo(child, newTab, { dontAnimate: true, });
 		});
 
 		// close the original tab and remove it from the recently closed tabs list
@@ -222,6 +238,7 @@ function windowOpened(window) {
 	const onContext = self.onContext = event => {
 		const menu = event.target;
 		currentTab = menu.contextTab || menu.triggerNode;
+		currentTab.owner && (currentTab._lastOwner = currentTab.owner);
 
 		const itemThis = addItem(
 			'context_unloadTab',
@@ -262,7 +279,9 @@ function windowOpened(window) {
 
 	const onClose = self.onClose = ({ target: tab, }) => {
 		if (!tab.selected) { return; }
-		gBrowser.selectedTab = findClosestNonPending(tabContainer.children, tab, _=>!_.getAttribute('hidden'));
+		gBrowser.selectedTab = findClosestNonPending(tabContainer.children, tab, {
+			filter: tab => !tab.getAttribute('hidden'),
+		});
 	};
 
 	tabContainer.addEventListener('TabClose', onClose, false);
