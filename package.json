@@ -1,7 +1,7 @@
 {
 	"name": "unload-tabs",
 	"title": "UnloadTabs",
-	"version": "0.7.2-b3",
+	"version": "0.7.2-b4",
 	"description": "Unload your tabs to free resources",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
@@ -36,6 +36,12 @@
 				{ "value": "0",  "label": "to the left" },
 				{ "value": "-1", "label": "that Firefox would focus, even if it is not loaded" }
 			]
+		}, {
+			"name": "accessKeyItemThis",
+			"title": "Item access key",
+			"description": "The first letter in this field is the quick access key for the unload tab menu item (requires Add-On disable/enable to apply). Default: X",
+			"type": "string",
+			"value": "X"
 		}, {
 			"name": "tabStyle",
 			"title": "Unloaded Tab style",

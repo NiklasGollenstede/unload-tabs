@@ -245,7 +245,8 @@ function windowOpened(window) {
 			'context_unloadTab',
 			menu.children[menu === singleMenu ? 'context_reloadTab' : 'multipletab-selection-reloadTabs'].nextSibling,
 			menu === singleMenu ? 'Unload Tab' : 'Unload Selected Tabs',
-			event => unloadSelectedTabs(gBrowser, currentTab, false)
+			event => unloadSelectedTabs(gBrowser, currentTab, false),
+			Prefs.prefs.accessKeyItemThis
 		);
 		const itemOthers = addItem(
 			'context_unloadOtherTabs',
@@ -263,16 +264,17 @@ function windowOpened(window) {
 		itemThis[menu === singleMenu && currentTab.getAttribute('pending') ? 'setAttribute' : 'removeAttribute']('disabled', 'true');
 		itemTree && itemTree[!gBrowser.treeStyleTab.hasChildTabs(currentTab) ? 'setAttribute' : 'removeAttribute']('hidden', 'true');
 
-		function addItem(id, next, label, oncommand) {
+		function addItem(id, next, label, oncommand, key) {
 			let item = menu.children[id];
 			if (item) { return item; }
 
 			item = document.createElement('menuitem');
 			item.id = id;
 			item.class = 'menu-iconic';
-			item.setAttribute('label', label);
 			menu.insertBefore(item, next);
+			item.setAttribute('label', label);
 			item.addEventListener('command', oncommand);
+			key && item.setAttribute('accesskey', key[0]);
 			addedMenuItens.add(item);
 			return item;
 		}
