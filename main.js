@@ -17,11 +17,12 @@ Cu.importGlobalProperties([ 'btoa', ]); /* global btoa */
 const toBase64 = btoa;
 
 function log() { console.log.apply(console, arguments); return arguments[arguments.length - 1]; }
-const forEach = (_=>_).call.bind(Array.prototype.forEach);
-const filter  = (_=>_).call.bind(Array.prototype.filter);
-const indexOf = (_=>_).call.bind(Array.prototype.indexOf);
+const { call, } = (_=>_); // i.e. Function.prototype
+const forEach = call.bind(Array.prototype.forEach);
+const filter  = call.bind(Array.prototype.filter);
+const indexOf = call.bind(Array.prototype.indexOf);
 
-let _private; // NameSpace to add private values to xul elements
+let Self; // NameSpace to add private values to xul elements
 const addedMenuItens = new Set();
 const shortCuts = { };
 
@@ -61,7 +62,7 @@ const CSS = 'href="data:text/css;base64,'+ toBase64(`
  */
 Prefs.on('tabStyle', () => {
 	forEach(Windows, window => {
-		const style = _private(viewFor(window).gBrowser).styleElement;
+		const style = Self(viewFor(window).gBrowser).styleElement;
 		if (!style) { return; }
 		style.sheet.deleteRule(style.sheet.cssRules.length - 1);
 		style.sheet.insertRule(unloadedTabStyle(), style.sheet.cssRules.length);
@@ -83,6 +84,7 @@ function findClosestNonPending(tabs, current, { filter = _=>true, } = { }) {
 	}
 
 	switch (Prefs.prefs.onClose) {
+		case -1: case '-1': return null;
 		case 1: case '1': {
 			if (find(current.nextSibling)) { return current.nextSibling; }
 		} break;
@@ -127,7 +129,7 @@ function unloadTab(gBrowser, tab) {
 	// clone tabs SessionStore state into a new tab
 	const newTab = gBrowser.addTab(null, { skipAnimation: true, userContextId, });
 	gSessionStore.setTabState(newTab, gSessionStore.getTabState(tab)); // "resource:///modules/sessionstore/TabState.jsm".clone provides a non-JSON version of this
-	(tab.owner || tab._lastOwner) && (newTab.owner = tab.owner || tab._lastOwner);
+	newTab.owner = tab._lastOwner;
 
 	if (!gBrowser.treeStyleTab) {
 		// restore the position
@@ -223,8 +225,8 @@ function selectNextLoaded(backwards) {
 }
 
 /**
- * initialises the addon for a window
- * called by high-levels Window.on('open', ...)
+ * Initializes the add-on for a window.
+ * Called by high-levels Window.on('open', ...).
  * @param  {high-level window}   window    the window that just opened
  */
 function windowOpened(window) {
@@ -232,13 +234,12 @@ function windowOpened(window) {
 	const { tabContainer, } = gBrowser;
 	const singleMenu = tabContainer.contextMenu;
 	const mulitMenu = singleMenu.parentNode.children['multipletab-selection-menu'];
-	const self = _private(gBrowser);
+	const self = Self(gBrowser);
 
 	let currentTab = null;
 	const onContext = self.onContext = event => {
 		const menu = event.target;
 		currentTab = menu.contextTab || menu.triggerNode;
-		currentTab.owner && (currentTab._lastOwner = currentTab.owner);
 
 		const itemThis = addItem(
 			'context_unloadTab',
@@ -277,6 +278,23 @@ function windowOpened(window) {
 		}
 	};
 
+	const onOpen = self.onOpen = ({ target: tab, }) => {
+		let value = tab.owner, last = value;
+		Object.defineProperty(tab, 'owner', {
+			get() { return value; },
+			set(now) {
+				// if (now) { last = now; } value = now;
+				last = value; value = now;
+				console.log('owner', tab.linkedPanel, value, last);
+			},
+			enumerable: true, configurable: true, writeable: true,
+		});
+		Object.defineProperty(tab, '_lastOwner', {
+			get() { console.log('last', tab.linkedPanel, last); return last; },
+			enumerable: true, configurable: true, writeable: true,
+		});
+	};
+
 	const onClose = self.onClose = ({ target: tab, }) => {
 		if (!tab.selected) { return; }
 		gBrowser.selectedTab = findClosestNonPending(tabContainer.children, tab, {
@@ -284,6 +302,8 @@ function windowOpened(window) {
 		});
 	};
 
+	forEach(tabContainer.children, tab => onOpen({ target: tab, }));
+	tabContainer.addEventListener('TabOpen', onOpen, false);
 	tabContainer.addEventListener('TabClose', onClose, false);
 	singleMenu.addEventListener('popupshowing', onContext, false);
 	mulitMenu && mulitMenu.addEventListener('popupshowing', onContext, false);
@@ -295,8 +315,8 @@ function windowOpened(window) {
 }
 
 /**
- * unloads the addon for a window
- * called by high-levels Window.on('close', ...)
+ * Unloads the add-on for a window
+ * Called by high-levels Window.on('close', ...).
  * @param  {high-level window}   window    the window that just closed / is about to close (?)
  */
 function windowClosed(window) {
@@ -304,7 +324,7 @@ function windowClosed(window) {
 	const { tabContainer, } = gBrowser;
 	const singleMenu = tabContainer.contextMenu;
 	const mulitMenu = singleMenu.parentNode.children['multipletab-selection-menu'];
-	const { onClose, onContext, styleElement, } = _private(gBrowser);
+	const { onClose, onContext, styleElement, } = Self(gBrowser);
 
 	tabContainer && tabContainer.removeEventListener('TabClose', onClose, false);
 	singleMenu   && singleMenu.removeEventListener('popupshowing', onContext, false);
@@ -313,10 +333,13 @@ function windowClosed(window) {
 }
 
 /**
- * addons main entry point
+ * Add-ons main entry point
  */
-function startup() {
-	_private = new NameSpace();
+function startup({ loadReason, }) {
+	if (loadReason === 'install') {
+		Prefs.prefs.onClose = 3;
+	}
+	Self = new NameSpace();
 	forEach(Windows, windowOpened);
 	Windows.on('open', windowOpened);
 	Windows.on('close', windowClosed);
@@ -333,23 +356,26 @@ function startup() {
 }
 
 /**
- * removes all listeners and reverts all changes
+ * Removes all listeners and reverts all changes
  */
-function shutdown() {
+function shutdown(reason) {
+	if (reason === 'shutdown') { return; } // performance
 	Windows.removeListener('close', windowClosed);
 	Windows.removeListener('open', windowOpened);
 	forEach(Windows, windowClosed);
 	addedMenuItens.forEach(item => item.remove());
 	Object.keys(shortCuts).forEach(key => shortCuts[key].destroy() && delete shortCuts[key]);
-	_private = null;
+	for (let tab of Tabs) {
+		tab = viewFor(tab);
+		const { owner, } = tab;
+		delete tab.owner; delete tab._lastOwner;
+		tab.owner = owner;
+	}
+	Self = null;
 }
 
-// make sdk run startup
+// make the SDK run the startup function
 exports.main = startup;
 
-// respond to unload, unless its because of 'shutdown' (performance)
-exports.onUnload = reason => {
-	if (reason !== 'shutdown') {
-		shutdown();
-	}
-};
+// respond to unload
+exports.onUnload = shutdown;

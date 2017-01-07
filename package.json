@@ -1,7 +1,7 @@
 {
 	"name": "unload-tabs",
 	"title": "UnloadTabs",
-	"version": "0.7.2-b1",
+	"version": "0.7.2-b3",
 	"description": "Unload your tabs to free resources",
 	"main": "main.js",
 	"author": "Niklas Gollenstede",
@@ -26,14 +26,15 @@
 		{
 			"name": "onClose",
 			"title": "Behavior on tab close",
-			"description": "When a tab is closed/unloaded, prefer to focus the tab ...",
+			"description": "When a tab is closed/unloaded, prefer to focus the loaded tab ...",
 			"type": "menulist",
 			"value": 0,
 			"options": [
-				{ "value": "0", "label": "to the left" },
-				{ "value": "1", "label": "to the right" },
-				{ "value": "2", "label": "that opened the tab, the left" },
-				{ "value": "3", "label": "that opened the tab, the right" }
+				{ "value": "3",  "label": "that opened the tab, to the right (Firefox default)" },
+				{ "value": "2",  "label": "that opened the tab, to the left" },
+				{ "value": "1",  "label": "to the right" },
+				{ "value": "0",  "label": "to the left" },
+				{ "value": "-1", "label": "that Firefox would focus, even if it is not loaded" }
 			]
 		}, {
 			"name": "tabStyle",
