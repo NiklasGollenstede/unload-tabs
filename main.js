@@ -170,7 +170,7 @@ function unloadTab(gBrowser, tab) {
  * @param  {<tab>}         tab       A single tab instance to exclude.
  */
 function unloadOtherTabs(gBrowser, tab) {
-	forEach(gBrowser.visibleTabs, other => other !== tab && unloadTab(gBrowser, other));
+	forEach(gBrowser.visibleTabs, other => other !== tab && (tab.pinned || !other.pinned) && unloadTab(gBrowser, other));
 }
 
 /**
@@ -284,16 +284,12 @@ function windowOpened(window) {
 		let value = tab.owner, last = value;
 		Object.defineProperty(tab, 'owner', {
 			get() { return value; },
-			set(now) {
-				// if (now) { last = now; } value = now;
-				last = value; value = now;
-				console.log('owner', tab.linkedPanel, value, last);
-			},
+			set(now) { last = value; value = now; },
 			enumerable: true, configurable: true, writeable: true,
 		});
 		Object.defineProperty(tab, '_lastOwner', {
-			get() { console.log('last', tab.linkedPanel, last); return last; },
-			enumerable: true, configurable: true, writeable: true,
+			get() { return last; },
+			enumerable: false, configurable: true, writeable: true,
 		});
 	};
 
