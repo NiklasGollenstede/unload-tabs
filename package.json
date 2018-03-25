@@ -1,65 +1,29 @@
 {
 	"name": "unload-tabs",
+	"version": "0.8.0",
 	"title": "UnloadTabs",
-	"version": "0.7.3",
 	"description": "Unload your tabs to free resources",
-	"main": "main.js",
 	"author": "Niklas Gollenstede",
-	"contributors": [
-		"Szabolcs Hubai",
-		"Philipp von Weitershausen"
-	],
-	"engines": {
-		"firefox": ">=38.0"
+	"license": "MPL-2.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/NiklasGollenstede/unload-tabs"
 	},
-	"license": "MPL 2.0",
-	"repository" : {
-		"type" : "git",
-		"url" : "git@github.com:NiklasGollenstede/unload-tabs.git"
+	"dependencies": {
+		"web-ext-build": "0.0.6",
+		"web-ext-utils": "0.0.16"
 	},
-	"icon": "icon.png",
-	"permissions": {
-		"private-browsing": true,
-		"multiprocess": true
+	"devDependencies": {
+		"babel-eslint": "7.1.1",
+		"eslint": "3.14.1",
+		"eslintrc": "NiklasGollenstede/eslintrc#3872881"
 	},
-	"preferences": [
-		{
-			"name": "onClose",
-			"title": "Behavior on tab close",
-			"description": "When a tab is closed/unloaded, prefer to focus the loaded tab ...",
-			"type": "menulist",
-			"value": 0,
-			"options": [
-				{ "value": "3",  "label": "that opened the tab, to the right (Firefox default)" },
-				{ "value": "2",  "label": "that opened the tab, to the left" },
-				{ "value": "1",  "label": "to the right" },
-				{ "value": "0",  "label": "to the left" },
-				{ "value": "-1", "label": "that Firefox would focus, even if it is not loaded" }
-			]
-		}, {
-			"name": "accessKeyItemThis",
-			"title": "Item access key",
-			"description": "The first letter in this field is the quick access key for the unload tab menu item (requires Add-On disable/enable to apply). Default: X",
-			"type": "string",
-			"value": "X"
-		}, {
-			"name": "tabStyle",
-			"title": "Unloaded Tab style",
-			"description": "A set of css rules to apply to unloaded tabs. Default: 'opacity: 0.5;'",
-			"type": "string",
-			"value": "opacity: 0.5;"
-		}, {
-			"name": "hotkeyNextLoaded",
-			"title": "Next loaded tab",
-			"description": "A hotkey combination to jump to the next visible loaded tab right of the currently selected tab (requires Add-On disable/enable to apply). Default: 'control-alt-pageup'.",
-			"type": "string",
-			"value": "control-alt-pageup"
-		}, {
-			"name": "hotkeyPrevLoaded",
-			"title": "Previous loaded tab",
-			"description": "A hotkey combination to jump to the previous visible loaded tab left of the currently selected tab (requires Add-On disable/enable to apply). Default: 'control-alt-pagedown'.",
-			"type": "string",
-			"value": "control-alt-pagedown"
-		}
-	]
+	"scripts": {
+		"postinstall": "npm start",
+		"start": "web-ext-build",
+		"lint": "eslint --ignore-path .gitignore ."
+	},
+	"eslintConfig": {
+		"extends": "./node_modules/eslintrc/web-ext.js"
+	}
 }
