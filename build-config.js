@@ -10,6 +10,17 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 	!options.viewRoot && (options.viewRoot = options.chrome ? 'UnloadTabs.html' : 'UnloadTabs');
 	delete manifestJson.browser_action;
 
+	manifestJson.commands = {
+		prevLoadedTab: {
+			suggested_key: { default: 'Alt+PageUp',	},
+			description: 'Switch to the previous loaded Tab',
+		},
+		nextLoadedTab: {
+			suggested_key: { default: 'Alt+PageDown',	},
+			description: 'Switch to the next loaded Tab',
+		},
+	};
+
 	files['.'].push(
 		'many.png',
 	);

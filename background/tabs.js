@@ -7,12 +7,16 @@
  * Synchronous cache for Tabs.get/.query()
  */
 
-const tabs = module.exports = new Map/*<id,{ id, discarded, active, opener, windowId, index, pinned, }>*/;
+const tabs = module.exports = new Map/*<id,{ id, discarded, active, hidden, openerTabId, windowId, index, pinned, }>*/;
+const active = new Map/*<windowId,id>*/, previous = new Map/*<windowId,id>*/, setActive = tab => {
+	previous.set(tab.windowId, active.get(tab.windowId)); active.set(tab.windowId, tab.id);
+};
 
 // initialize
-Tabs.query({ }).then(_=>_.forEach(addTab));
-function addTab({ id, discarded, active, opener, windowId, index, pinned, }) {
-	tabs.set(id, { id, discarded, active, opener, windowId, index, pinned, __proto__: null, });
+Tabs.query({ }).then(_=>_.forEach(addTab)).then(() => tabs.query({ active: true, }).forEach(setActive));
+function addTab({ id, discarded, active, hidden, openerTabId, windowId, index, pinned, }) {
+	!discarded && arguments[0].isArticle === undefined && arguments[0].status === 'complete' && (discarded = true); // FF59 reports never-loaded tabs as not discarded
+	tabs.set(id, { id, discarded, active, hidden, openerTabId, windowId, index, pinned, __proto__: null, });
 	tabs.query({ windowId, }).forEach(tab => tab.index > index && tab.index++);
 	console.log('addTab', id, tabs.get(id));
 }
@@ -32,7 +36,7 @@ function updateTab(props, change = props) {
 Tabs.onActivated.addListener(function ({ tabId, windowId, }) {
 	console.log('onActivated', ...arguments);
 	tabs.find({ windowId, active: true, }).active = false; // old in same window
-	tabs.get(tabId).active = true;
+	const tab = tabs.get(tabId); tab.active = true; tab.discarded = false; setActive(tab);
 });
 
 // move within window
@@ -77,5 +81,9 @@ function query(one, query) {
 tabs.query = function(props) { return query(false, props); }
 // get first matching (or null)
 tabs.find  = function(props) { return query(true,  props); }
+// get the active tab in a window
+tabs.active = function(windowId) { return tabs.get(active.get(windowId)) || null; };
+// get the previous active tab in a window
+tabs.previous = function(windowId) { return tabs.get(previous.get(windowId)) || null; };
 
 }); })(this);

@@ -9,14 +9,13 @@ const model = {
 	onClose: {
 		title: 'Behavior on tab close',
 		description: `When a tab is closed/unloaded, prefer to focus the loaded tab ...`,
-		default: 'opener-right',
-		restrict: { match: (/^none$|^(?:opener-)?(?:left|right)$/), },
+		default: 'prev',
+		restrict: { match: (/^(?:none|prev|left|right)$/), },
 		input: { type: 'menulist', options: [
-			{ value: 'opener-right', label: `that opened the tab, to the right (Firefox default)`, },
-			{ value: 'opener-left',  label: `that opened the tab, to the left`, },
-			{ value: 'right',        label: `to the right`, },
-			{ value: 'left',         label: `to the left`, },
-			{ value: 'none',         label: `that Firefox would focus, even if it is not loaded`, },
+			{ value: 'prev',   label: `previously focused`, },
+			{ value: 'right',  label: `to the right`, },
+			{ value: 'left',   label: `to the left`, },
+			{ value: 'none',   label: `that Firefox would focus, even if it is not loaded`, },
 		], },
 	},
 	debug: {
