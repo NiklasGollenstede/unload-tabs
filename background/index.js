@@ -28,6 +28,8 @@ debug && console.info('Ran updates', updated);
 /**
  * Interesting issues (https://bugzilla.mozilla.org/show_bug.cgi?id=<id>):
  * * [1420681]: let `Tabs.discard( , { forceDiscard:true, })`` discard tabs with 'beforeunload' handlers
+ * * [1303384]: UI for re-assigning an extension's command shortcut
+ * * [1320332]: Support overriding existing keybinding through WebExtensions (e.g. allow "Ctrl+Page(Up|Down)" or "Ctrl(+Shift)+Tab")
  */
 
 

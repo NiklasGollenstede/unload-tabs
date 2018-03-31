@@ -23,6 +23,7 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 	};
 
 	files['.'].push(
+		'dim-unloaded-tabs.css',
 		'many.png',
 	);
 

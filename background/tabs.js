@@ -82,7 +82,7 @@ function setActive(tab) {
 
 
 // move within window
-listen(Tabs.onMoved, (id, { fromIndex: from, toIndex: to, }) => moveTab(id, fromIndex, toIndex));
+listen(Tabs.onMoved, (id, { fromIndex, toIndex, }) => moveTab(id, fromIndex, toIndex));
 function moveTab(id, from, to) {
 	debug && console.log('moveTab', ...arguments);
 	const tab = tabs.get(id); const move = query({ windowId: tab.windowId, });
