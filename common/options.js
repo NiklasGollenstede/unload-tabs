@@ -7,24 +7,28 @@ const isBeta = (/^\d+\.\d+.\d+(?!$)/).test((global.browser || global.chrome).run
 
 const model = {
 	onClose: {
-		title: 'Behavior on tab close',
-		description: `When a tab is closed/unloaded, prefer to focus the loaded tab ...`,
-		default: 'prev',
-		restrict: { match: (/^(?:none|prev|left|right)$/), },
-		input: { type: 'menulist', options: [
-			{ value: 'prev',   label: `previously focused`, },
-			{ value: 'right',  label: `to the right`, },
-			{ value: 'left',   label: `to the left`, },
-			{ value: 'none',   label: `that Firefox would focus, even if it is not loaded`, },
-		], },
+		title: 'On tab close',
+		default: true,
+		input: { type: 'boolean', suffix: `prevent Firefox from loading unloaded tabs.`, },
+		children: {
+			select: {
+				default: 'prev',
+				restrict: { match: (/^(?:none|prev|left|right)$/), },
+				input: { type: 'menulist', options: [
+					{ value: 'prev',   label: `the ᴘʀᴇᴠɪᴏᴜs focused tab`, },
+					{ value: 'right',  label: `the tab to the ʀɪɢʜᴛ`, },
+					{ value: 'left',   label: `the tab to the ʟᴇғᴛ`, },
+				], prefix: `Instead select`, suffix: `if loaded, or the closest loaded tab.`, },
+			}
+		},
 	},
 	debug: {
 		title: 'Debug Level',
 		expanded: false,
 		default: +isBeta,
 		hidden: !isBeta,
-		restrict: { type: 'number', from: 0, to: 2, },
-		input: { type: 'integer', suffix: `set to > 0 to enable some diagnostic logging`, },
+		restrict: { type: 'number', from: 0, to: 2, type: 'number', match: { exp: /^\d$/, message: 'This value must be an integer' }, },
+		input: { type: 'number', suffix: `set to > 0 to enable some diagnostic logging`, },
 	},
 };
 

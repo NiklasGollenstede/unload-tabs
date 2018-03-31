@@ -5,6 +5,7 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 		'menus',
 		'notifications',
 		'tabs',
+		// 'webRequest', 'webRequestBlocking',
 	);
 
 	!options.viewRoot && (options.viewRoot = options.chrome ? 'UnloadTabs.html' : 'UnloadTabs');
