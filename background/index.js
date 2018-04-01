@@ -85,14 +85,16 @@ Menus.onClicked.addListener(async ({ menuItemId, }, { id, }) => { const tab = Ta
 
 
 // respond to (keyboard) commands
-Commands && Commands.onCommand.addListener(async command => { debug2 && console.log('command', command); try { switch (command) {
+Commands && Commands.onCommand.addListener(async command => { {
+	debug2 && console.log('command', command);
+} try { switch (command.replace(/_\d$/, '')) {
 	case 'prevLoadedTab': (await seek(-1)); break;
 	case 'nextLoadedTab': (await seek(+1)); break;
 } } catch (error) { reportError(error); } });
 async function seek(direction) {
 	const window = (await Windows.getLastFocused({ windowTypes: [ 'normal', ], populate: !onClose, }));
-	const tabs = (window.tabs || Tabs.query({ windowId: window.id, }))
-	.sort((a, b) => a.index - b.index); const start = tabs.findIndex(_=>_.active)
+	const tabs = (window.tabs || Tabs.query({ windowId: window.id, })).sort((a, b) => a.index - b.index);
+	const start = tabs.findIndex(_=>_.active);  if (start < 0) { return; }
 
 	function find(tab) { return tab && !tab.discarded && !tab.hidden && (alt = tab); }
 	function increment(index) { return (index + direction + tabs.length) % tabs.length; }
@@ -104,6 +106,14 @@ async function seek(direction) {
 
 	alt && (await Tabs.update(alt.id, { active: true, }));
 }
+options.commands.onAnyChange(async ([ primary, secondary, ], _, { name, }) => {
+	const commands = (await Commands.getAll());
+	for (const [ suffix, value, ] of Object.entries({ '': primary, _2: secondary, })) {
+		const command = commands.find(_=>_.name === name + suffix); delete command.shortcut;
+		if (value) { command.shortcut = value.replace(/Key|Digit|Numpad|Arrow/, ''); }
+		(await Commands.update(command));
+	}
+});
 
 
 // respond to tab close
@@ -148,25 +158,20 @@ function findNext(tab) { const { openerTabId, windowId, index, pinned, discarded
 	debug2 && console.log('findNext', ...arguments);
 	let found = null; function find(tab) { return tab && !tab.discarded && !tab.hidden && (found = tab); }
 
-	switch (options.onClose.children.select.value) {
-		case 'prev': {
-			if (find(Tabs.previous(windowId))) { debug2 && console.log('prev'); return found; }
-		} break;
-		case 'right': {
-			if (find(Tabs.find({ windowId, index: index + 1, }))) { debug2 && console.log('right'); return found; }
-		} break;
-		case 'left': // happens automatically
+	if (options.onClose.children.previous.value) {
+		if (find(Tabs.previous(windowId))) { debug2 && console.log('prev'); return found; }
 	}
 
 	const tabs = Tabs.query({ windowId, }).sort((a, b) => a.index - b.index);
 	const start = tabs.indexOf(tab); if (start < 0) { return null; }
+	const direction = options.onClose.children.direction.value;
 
 	debug2 && console.log(clone(tabs), tab, start);
 
 	for ( // search up and down at the same time. No need to wrap around
-		let j = start - 1, i = start + 1, length = tabs.length;
-		(j >= 0 || i < length) && !(find(tabs[j]) || find(tabs[i]));
-		--j, ++i
+		let j = start + direction, i = start - direction, length = tabs.length;
+		(j >= 0 && j < length || i >= 0 && i < length) && !(find(tabs[j]) || find(tabs[i]));
+		j += direction, i -= direction
 	) { void 0; }
 	return found;
 }

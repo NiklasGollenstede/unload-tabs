@@ -11,15 +11,36 @@ const model = {
 		default: true,
 		input: { type: 'boolean', suffix: `prevent Firefox from loading unloaded tabs.`, },
 		children: {
-			select: {
-				default: 'prev',
-				restrict: { match: (/^(?:none|prev|left|right)$/), },
+			previous: {
+				default: true,
+				input: { type: 'boolean', prefix: `Instead select<br>`, suffix: `the previous focused tab,`, },
+			},
+			direction: {
+				default: +1,
+				restrict: { type: 'number', match: (/^[-]?1$/), },
 				input: { type: 'menulist', options: [
-					{ value: 'prev',   label: `the ᴘʀᴇᴠɪᴏᴜs focused tab`, },
-					{ value: 'right',  label: `the tab to the ʀɪɢʜᴛ`, },
-					{ value: 'left',   label: `the tab to the ʟᴇғᴛ`, },
-				], prefix: `Instead select`, suffix: `if loaded, or the closest loaded tab.`, },
-			}
+					{ value: +1, label: `right`, },
+					{ value: -1, label: `left`, },
+				], prefix: `or the closest loaded tab, prefering `, },
+			},
+		},
+	},
+	commands: {
+		title: 'Keyboards shortcuts',
+		default: true,
+		children: {
+			prevLoadedTab: {
+				description: `Switch to the <b>previous</b> loaded Tab`,
+				default: 'Alt+PageUp',
+				maxLength: 2,
+				input: { type: 'keybordKey', default: 'Alt+PageUp', },
+			},
+			nextLoadedTab: {
+				description: `Switch to the <b>next</b> loaded Tab`,
+				default: 'Alt+PageDown',
+				maxLength: 2,
+				input: { type: 'keybordKey', default: 'Alt+PageDown', },
+			},
 		},
 	},
 	debug: {

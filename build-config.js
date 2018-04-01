@@ -1,6 +1,8 @@
 /*eslint strict: ['error', 'global'], no-implicit-globals: 'off'*/ 'use strict'; /* globals module, */ // license: MPL-2.0
 module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 
+	manifestJson.applications.gecko.strict_min_version = '59.0';
+
 	manifestJson.permissions.push(
 		'menus',
 		'notifications',
@@ -15,11 +17,11 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 		prevLoadedTab: {
 			suggested_key: { default: 'Alt+PageUp',	},
 			description: 'Switch to the previous loaded Tab',
-		},
+		}, prevLoadedTab_2: { },
 		nextLoadedTab: {
 			suggested_key: { default: 'Alt+PageDown',	},
 			description: 'Switch to the next loaded Tab',
-		},
+		}, nextLoadedTab_2: { },
 	};
 
 	files['.'].push(

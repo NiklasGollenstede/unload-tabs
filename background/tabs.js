@@ -73,12 +73,12 @@ function addTab({ id, discarded, active, hidden, openerTabId, windowId, index, p
 // activate (focus)
 listen(Tabs.onActivated, function ({ tabId, windowId, }) {
 	debug && console.log('onActivated', ...arguments);
-	find({ windowId, active: true, }).active = false; // old in same window
+	const last = find({ windowId, active: true, }); last && (last.active = false); // old in same window
 	const tab = tabs.get(tabId); tab.active = true; tab.discarded = false; setActive(tab);
 });
 function setActive(tab) {
 	previous.set(tab.windowId, active.get(tab.windowId)); active.set(tab.windowId, tab.id);
-};
+}
 
 
 // move within window
@@ -107,8 +107,9 @@ listen(Tabs.onAttached, function (id, { newWindowId, newPosition: newIndex, }) {
 // closed
 listen(Tabs.onRemoved, function (id) { setTimeout(() => {
 	debug && console.log('onRemoved', ...arguments);
-	const { windowId, index, } = tabs.get(id); tabs.delete(id);
+	const { windowId, index, active, } = tabs.get(id); tabs.delete(id);
 	query({ windowId, }).forEach(tab => tab.index > index && tab.index--);
+	active && console.warn('removed active tab');
 }); });
 
 
