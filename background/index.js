@@ -17,11 +17,14 @@ debug && console.info('Ran updates', updated);
  *      * reported as #1450371
  *  * [BAD]  loading discarded/pending tabs removes the favicon, which will be missing when the tab is discarded again before the favicon is restored
  *      * reported as #1450382
+ *      * sometimes (very rarely), the tab is even displayed and reported as a blank tab { title: 'New Tab', url: 'about:newtab/blank', }
  *  * [BUG]  tabs.onUpdated doesn't always report favIconUrl (when restoring discarded tabs)
  *      * reported as #1450384
  *  * [API]  favIconUrl can't be set
  *      * requested in #1450386
- *  * [BUG?] never loaded tabs are not discarded (but internally pending) (this is supposed to be fixed and I can't reproduce it, but it did happen in FF60)
+ *  * [BUG?] never loaded tabs are not discarded (but internally pending)
+ *      * this is supposed to be fixed, but it does (sometimes?) happen in FF60
+ *      * as a consequence, onUpdated(, { discarded: false, }) won't fire
  * Also:
  *  * [BUG?] calling tabs.executeScript() for discarded tabs loads them
  *  * [BUG]  calling tabs.executeScript() for never-loaded tabs only resolves after the tab is manually loaded (should reject or behave as if the tab was discarded)
@@ -120,11 +123,14 @@ options.commands.onAnyChange(async (values, _, { name, model: { maxLength, }, })
 	const commands = (await Commands.getAll());
 	for (let i = 0; i < maxLength; ++i) {
 		const id = name + (i ? '_'+ i : ''), command = commands.find(_=>_.name === id);
-		const value = values[i]; if (value) {
-			command.shortcut = value.replace(/Key|Digit|Numpad|Arrow/, '');
-		} else { delete command.shortcut; }
-		try { (await Commands.update(command)); }
-		catch (error) { Commands.reset(id); throw error; }
+		command.shortcut = values[i] || null;
+		if (command.shortcut) { try {
+			(await Commands.update(command));
+		} catch (error) {
+			Commands.reset(id); throw error;
+		} } else {
+			Commands.reset(id); // can't remove, so must only allow not to set if default is unset
+		}
 	}
 });
 
@@ -141,6 +147,13 @@ async function onRemoved(id) { // choose the next active tab
 }
 async function onActivated({ tabId: id, }) { // don't allow the wrong tab to be activated (shortly after closing)
 	if (!activating || activating === id) { return; }
+
+	// BUG[FF60]: If a not-restored tab it incorrectly not marked as discarded, onUpdated won't fire.
+	// TODO: Tabs.get(id).discarded was already patched by the Tabs module.
+	// The proper solution is probably to have the Tabs module emit patched events
+	// (instead of just patching the tabs state and forwarding the raw events).
+	Tabs.get(id).discarded && onUpdated(id, { discarded: false, });
+
 	debug && console.warn('focusing wrong tab', id, clone(Tabs.get(id)));
 	Tabs.update(activating, { active: true, });
 	for (const time of [ 10, 35, 70, 120, ]) { (await sleep(time));
@@ -168,14 +181,13 @@ function findNext(tab) { const { windowId, } = tab;
 	let found = null; function find(tab) { return tab && !tab.discarded && !tab.hidden && (found = tab); }
 
 	if (options.onClose.children.previous.value) {
-		if (find(Tabs.previous(windowId))) { debug2 && console.log('prev'); return found; }
+		if (find(Tabs.previous(windowId))) { return found; }
 	}
 
 	const tabs = Tabs.query({ windowId, }).sort((a, b) => a.index - b.index);
 	const start = tabs.indexOf(tab); if (start < 0) { return null; }
 	const direction = options.onClose.children.direction.value;
-
-	debug2 && console.log(clone(tabs), tab, start);
+	// debug2 && console.log(clone(tabs), tab, start);
 
 	for ( // search up and down at the same time. No need to wrap around
 		let j = start + direction, i = start - direction, length = tabs.length;

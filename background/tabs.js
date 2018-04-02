@@ -52,7 +52,9 @@ async function disable() {
 // add and basic update
 listen(Tabs.onCreated, props => updateTab(props));
 listen(Tabs.onUpdated, (id, change, props) => {
-	('status' in change) && ('favIconUrl' in props) && (change.favIconUrl = props.favIconUrl); // FF60 doesn't always report favicon changes
+	// BUG[FF60]: When loading unloaded tab, the favIconUrl is restored, but that is not always reported properly.
+	('status' in change) && ('favIconUrl' in props) && Tabs.get(id).favIconUrl !== props.favIconUrl && (change.favIconUrl = props.favIconUrl);
+
 	updateTab(props, change);
 });
 function updateTab(props, change = props) {
@@ -63,7 +65,9 @@ function updateTab(props, change = props) {
 	} else { addTab(props); }
 }
 function addTab({ id, discarded, active, hidden, openerTabId, windowId, index, pinned, favIconUrl, }) {
-	!discarded && arguments[0].isArticle === undefined && arguments[0].status === 'complete' && (discarded = true); // FF60 reports never-loaded tabs as not discarded (this is supposed to be fixed and I can't reproduce it, but it did happen in FF60)
+	// BUG[FF60]: FF *sometimes* reports never-loaded tabs as not discarded (this is supposed to be fixed, but it does still happen in FF60)
+	!discarded && arguments[0].isArticle === undefined && arguments[0].status === 'complete' && (discarded = true);
+
 	tabs.set(id, { id, discarded, active, hidden, openerTabId, windowId, index, pinned, favIconUrl, __proto__: null, });
 	query({ windowId, }).forEach(tab => tab.index > index && tab.index++);
 	debug && console.log('addTab', id, tabs.get(id));
@@ -71,10 +75,14 @@ function addTab({ id, discarded, active, hidden, openerTabId, windowId, index, p
 
 
 // activate (focus)
-listen(Tabs.onActivated, function ({ tabId, windowId, }) {
+listen(Tabs.onActivated, function ({ tabId: id, windowId, }) {
 	debug && console.log('onActivated', ...arguments);
 	const last = find({ windowId, active: true, }); last && (last.active = false); // old in same window
-	const tab = tabs.get(tabId); tab.active = true; tab.discarded = false; setActive(tab);
+	const tab = tabs.get(id); tab.active = true; setActive(tab);
+
+	// BUG[FF60]: If a not-restored tab it incorrectly not marked as discarded, onUpdated won't fire.
+	// Normally, it fires before onActivated.
+	tabs.get(id).discarded && updateTab({ id, }, { discarded: false, });
 });
 function setActive(tab) {
 	previous.set(tab.windowId, active.get(tab.windowId)); active.set(tab.windowId, tab.id);

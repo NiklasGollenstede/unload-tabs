@@ -31,22 +31,22 @@ const model = {
 		hidden: +(/\d+/).exec(version) < 60,
 		children: {
 			unloadSelectedTab: {
-				description: `Unload the current tab`,
+				description: `<b>Unload</b> the current Tab`,
 				default: [ ],
 				maxLength: 2,
-				input: { type: 'keybordKey', default: 'Alt+W', },
+				input: { type: 'command', default: 'Alt+W', },
 			},
 			prevLoadedTab: {
 				description: `Switch to the <b>previous</b> loaded Tab`,
 				default: 'Alt+PageUp',
-				maxLength: 2,
-				input: { type: 'keybordKey', default: 'Alt+PageUp', },
+				minLength: 1, maxLength: 2,
+				input: { type: 'command', default: 'Alt+PageUp', },
 			},
 			nextLoadedTab: {
 				description: `Switch to the <b>next</b> loaded Tab`,
 				default: 'Alt+PageDown',
-				maxLength: 2,
-				input: { type: 'keybordKey', default: 'Alt+PageDown', },
+				minLength: 1, maxLength: 2,
+				input: { type: 'command', default: 'Alt+PageDown', },
 			},
 		},
 	},
