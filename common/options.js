@@ -1,6 +1,6 @@
 (function(global) { 'use strict'; define(async ({ // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
-	'node_modules/web-ext-utils/browser/': { manifest, },
 	'node_modules/web-ext-utils/browser/storage': { sync: storage, },
+	'node_modules/web-ext-utils/browser/version': { version, },
 	'node_modules/web-ext-utils/options/': Options,
 }) => {
 const isBeta = (/^\d+\.\d+.\d+(?!$)/).test((global.browser || global.chrome).runtime.getManifest().version); // version doesn't end after the 3rd number ==> bata channel
@@ -28,7 +28,14 @@ const model = {
 	commands: {
 		title: 'Keyboards shortcuts',
 		default: true,
+		hidden: +(/\d+/).exec(version) < 60,
 		children: {
+			unloadSelectedTab: {
+				description: `Unload the current tab`,
+				default: [ ],
+				maxLength: 2,
+				input: { type: 'keybordKey', default: 'Alt+W', },
+			},
 			prevLoadedTab: {
 				description: `Switch to the <b>previous</b> loaded Tab`,
 				default: 'Alt+PageUp',
@@ -48,7 +55,7 @@ const model = {
 		expanded: false,
 		default: +isBeta,
 		hidden: !isBeta,
-		restrict: { type: 'number', from: 0, to: 2, type: 'number', match: { exp: /^\d$/, message: 'This value must be an integer' }, },
+		restrict: { type: 'number', from: 0, to: 2, match: { exp: /^\d$/, message: 'This value must be an integer', }, },
 		input: { type: 'number', suffix: `set to > 0 to enable some diagnostic logging`, },
 	},
 };

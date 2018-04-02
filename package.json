@@ -24,6 +24,7 @@
 		"lint": "eslint --ignore-path .gitignore ."
 	},
 	"eslintConfig": {
-		"extends": "./node_modules/eslintrc/web-ext.js"
+		"extends": "./node_modules/eslintrc/web-ext.js",
+		"rules": { "no-console": "off" }
 	}
 }

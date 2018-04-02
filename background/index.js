@@ -1,13 +1,15 @@
 (function(global) { 'use strict'; define(async ({ // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
-	'node_modules/web-ext-utils/browser/': { Menus, Commands, Windows, WebRequest, },
+	'node_modules/web-ext-utils/browser/': { Menus, Commands, Windows, },
 	'node_modules/web-ext-utils/utils/': { reportError, /*reportSuccess,*/ },
 	'node_modules/web-ext-utils/update/': updated,
 	'common/options': options,
-	Tabs,
+	Tabs, tst,
 	require, module,
 }) => { /* global setTimeout, */
 let debug, debug2; options.debug.whenChange(([ value, ]) => { debug = value; debug2 = value >= 2; });
+Object.assign(global, { Browser: require('node_modules/web-ext-utils/browser/'), options, Tabs, tst, });
 debug && console.info('Ran updates', updated);
+
 
 /**
  * Firefox bugs affecting this extension (FF60):
@@ -52,22 +54,26 @@ let onClose = false; options.onClose.whenChange(([ value, ]) => {
 
 
 // add menus
-Menus.create({
-	title: 'Unload Tab',
-	id: 'unloadTab',
-	icons: { 64: 'icon.png', },
-	contexts: [ 'tab', 'tools_menu', ],
-});
-Menus.create({
-	title: 'Unload Other Tabs',
-	id: 'unloadOtherTabs',
-	icons: { 32: 'many.png', },
-	contexts: [ 'tools_menu', ],
-});
+const menus = {
+	unloadTab: {
+		title: 'Unload Tab',
+		id: 'unloadTab',
+		icons: { 64: 'icon.png', },
+		contexts: [ 'tab', 'tools_menu', ],
+	},
+	unloadOtherTabs: {
+		title: 'Unload Other Tabs',
+		id: 'unloadOtherTabs',
+		icons: { 32: 'many.png', },
+		contexts: [ 'tools_menu', ],
+	},
+};
+Object.values(menus).forEach(menu => Menus.create(menu));
 
 
 // respond to menu click
-Menus.onClicked.addListener(async ({ menuItemId, }, { id, }) => { const tab = Tabs.get(id); try { switch (menuItemId) {
+Menus.onClicked.addListener(onClicked);
+async function onClicked({ menuItemId, }, { id, }) { const tab = Tabs.get(id); try { switch (menuItemId) {
 	case 'unloadTab': {
 		if (tab.active) { const alt = onClose && findNext(tab); if (alt) {
 			(await Tabs.update(alt.id, { active: true, }));
@@ -81,20 +87,24 @@ Menus.onClicked.addListener(async ({ menuItemId, }, { id, }) => { const tab = Ta
 			discarded: false, windowId: tab.windowId, pinned: tab.pinned ? undefined : false,
 		}).filter(_=>_.id !== tab.id).map(_=>_.id)));
 	} break;
-} } catch (error) { reportError(error); } });
+} } catch (error) { reportError(error); } }
 
 
 // respond to (keyboard) commands
-Commands && Commands.onCommand.addListener(async command => { {
+Commands && Commands.onCommand.addListener(onCommand);
+async function onCommand(command) { {
 	debug2 && console.log('command', command);
 } try { switch (command.replace(/_\d$/, '')) {
-	case 'prevLoadedTab': (await seek(-1)); break;
-	case 'nextLoadedTab': (await seek(+1)); break;
-} } catch (error) { reportError(error); } });
-async function seek(direction) {
+	case 'unloadSelectedTab': (await onClicked({ menuItemId: 'unloadTab', }, (await Tabs.queryAsync({
+		active: true, windowId: (await Windows.getLastFocused({ windowTypes: [ 'normal', ], })).id,
+	}))[0])); break;
+	case 'prevLoadedTab': (await seekNext(-1)); break;
+	case 'nextLoadedTab': (await seekNext(+1)); break;
+} } catch (error) { reportError(error); } }
+async function seekNext(direction) {
 	const window = (await Windows.getLastFocused({ windowTypes: [ 'normal', ], populate: !onClose, }));
 	const tabs = (window.tabs || Tabs.query({ windowId: window.id, })).sort((a, b) => a.index - b.index);
-	const start = tabs.findIndex(_=>_.active);  if (start < 0) { return; }
+	const start = tabs.findIndex(_=>_.active); if (start < 0) { return; }
 
 	function find(tab) { return tab && !tab.discarded && !tab.hidden && (alt = tab); }
 	function increment(index) { return (index + direction + tabs.length) % tabs.length; }
@@ -106,12 +116,15 @@ async function seek(direction) {
 
 	alt && (await Tabs.update(alt.id, { active: true, }));
 }
-options.commands.onAnyChange(async ([ primary, secondary, ], _, { name, }) => {
+options.commands.onAnyChange(async (values, _, { name, model: { maxLength, }, }) => {
 	const commands = (await Commands.getAll());
-	for (const [ suffix, value, ] of Object.entries({ '': primary, _2: secondary, })) {
-		const command = commands.find(_=>_.name === name + suffix); delete command.shortcut;
-		if (value) { command.shortcut = value.replace(/Key|Digit|Numpad|Arrow/, ''); }
-		(await Commands.update(command));
+	for (let i = 0; i < maxLength; ++i) {
+		const id = name + (i ? '_'+ i : ''), command = commands.find(_=>_.name === id);
+		const value = values[i]; if (value) {
+			command.shortcut = value.replace(/Key|Digit|Numpad|Arrow/, '');
+		} else { delete command.shortcut; }
+		try { (await Commands.update(command)); }
+		catch (error) { Commands.reset(id); throw error; }
 	}
 });
 
@@ -130,7 +143,7 @@ async function onActivated({ tabId: id, }) { // don't allow the wrong tab to be 
 	if (!activating || activating === id) { return; }
 	debug && console.warn('focusing wrong tab', id, clone(Tabs.get(id)));
 	Tabs.update(activating, { active: true, });
-	for (const time of [ 10, 35, 70, 120, 300, ]) { (await sleep(time));
+	for (const time of [ 10, 35, 70, 120, ]) { (await sleep(time));
 		Tabs.update(activating, { active: true, }); debug && console.info('force activate', id);
 	}
 }
@@ -141,20 +154,16 @@ async function onUpdated(id, change) { // don't allow tabs to load that are not 
 	debug && console.warn('background tab loads', id, clone(Tabs.get(id)));
 	// const favIconUrl = lastRemovedFavicon && lastRemovedFavicon.id === id && lastRemovedFavicon.favIconUrl;
 	Tabs.discard(id); tab.discarded = true; // so that on the close event (which happens after this one in FF60) this tab won't be selected
-	for (const time of [ 10, 35, 70, 120, 300, ]) { (await sleep(time));
+	for (const time of [ 10, 35, 70, 120, ]) { (await sleep(time));
 		Tabs.discard(id); debug && console.info('force discard', id);
 	}
 	// !tab.favIconUrl && favIconUrl && Tabs.update(id, { favIconUrl, }); // restore favicon
 }
 // restoring tabs doesn't do any webRequests and webNavigation can't be canceled
-/*WebRequest.onBeforeRequest.addListener( // don't allow tabs to load that are discarded
-	({ tabId: id, url, }) =>  { console.warn('load', url); return Tabs.get(id).discarded ? ({ cancel: true, }) : null; },
-	{ types: [ 'main_frame', ], urls: [ '<all_urls>', ] }, [ 'blocking', ],
-);*/
 
 
 // get next loaded tab (on close or unload)
-function findNext(tab) { const { openerTabId, windowId, index, pinned, discarded, } = tab;
+function findNext(tab) { const { windowId, } = tab;
 	debug2 && console.log('findNext', ...arguments);
 	let found = null; function find(tab) { return tab && !tab.discarded && !tab.hidden && (found = tab); }
 
@@ -186,11 +195,15 @@ function clone(arg) {
 }
 
 
-// debug stuff
-Object.assign(global, module.exports = {
-	Browser: require('node_modules/web-ext-utils/browser/'),
-	options, Tabs,
-});
+// Tree Style Tab integration
+tst.enable(); // TODO: add option
+// the very first tst.enable() has to happen while TST is already running for the initial registration to work
 
+module.exports = {
+	menus,
+	onClicked, onCommand,
+	onRemoved, onActivated, onUpdated,
+	findNext, seekNext,
+};
 
 }); })(this);

@@ -10,19 +10,19 @@ let debug; options.debug.whenChange(([ value, ]) => { debug = value >= 2; });
  */
 // browser.tabs properties
 const exports = module.exports = Object.create(Tabs);
-Object.defineProperty(exports, 'getAsync', Object.getOwnPropertyDescriptor(Tabs, 'get'));
-Object.defineProperty(exports, 'queryAsync', Object.getOwnPropertyDescriptor(Tabs, 'query'));
+setProp(exports, 'getAsync', function () { return Tabs.get(...arguments); });
+setProp(exports, 'queryAsync', function () { return Tabs.query(...arguments); });
 // get all or first matching tab synchronously
 setProp(exports, 'query', query); setProp(exports, 'find', find);
 // get the active tab in a window
-setProp(exports, 'active',   function (windowId) { return tabs.get(active.get(windowId)) || null; });
+setProp(exports, 'active',   windowId => tabs.get(active.get(windowId)) || null);
 // get the previous active tab in a window
-setProp(exports, 'previous', function (windowId) { return tabs.get(previous.get(windowId)) || null; });
+setProp(exports, 'previous', windowId => tabs.get(previous.get(windowId)) || null);
 // Map methods (including synchronous get)
 [ 'get', 'has', 'entries', 'keys', 'values', 'forEach', Symbol.iterator, ]
 .forEach(name => setProp(exports, name, function () { return Map.prototype[name].apply(tabs, arguments); }));
 // manually enables or disables the module
-setProp(exports, 'setEnabled', function (value) { return value ? enable() : disable(); });
+setProp(exports, 'setEnabled', _=>_? enable() : disable());
 
 
 /// implementation
@@ -52,7 +52,7 @@ async function disable() {
 // add and basic update
 listen(Tabs.onCreated, props => updateTab(props));
 listen(Tabs.onUpdated, (id, change, props) => {
-	('status' in change) && ('favIconUrl' in props) && (change.favIconUrl = props.favIconUrl) // FF60 doesn't always report favicon changes
+	('status' in change) && ('favIconUrl' in props) && (change.favIconUrl = props.favIconUrl); // FF60 doesn't always report favicon changes
 	updateTab(props, change);
 });
 function updateTab(props, change = props) {

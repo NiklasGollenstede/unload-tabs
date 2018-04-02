@@ -14,14 +14,18 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 	delete manifestJson.browser_action;
 
 	manifestJson.commands = {
+		unloadSelectedTab: {
+			suggested_key: { },
+			description: 'Unload the current tab',
+		}, unloadSelectedTab_1: { },
 		prevLoadedTab: {
 			suggested_key: { default: 'Alt+PageUp',	},
 			description: 'Switch to the previous loaded Tab',
-		}, prevLoadedTab_2: { },
+		}, prevLoadedTab_1: { },
 		nextLoadedTab: {
 			suggested_key: { default: 'Alt+PageDown',	},
 			description: 'Switch to the next loaded Tab',
-		}, nextLoadedTab_2: { },
+		}, nextLoadedTab_1: { },
 	};
 
 	files['.'].push(
