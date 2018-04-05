@@ -25,6 +25,20 @@ const model = {
 			},
 		},
 	},
+	menus: {
+		title: 'Menus',
+		default: true,
+		children: {
+			unloadOtherTabs: {
+				default: 'tab tools_menu',
+				restrict: { type: 'string', },
+				input: { type: 'menulist', options: [
+					{ value: 'tools_menu', label: `only in the Tools menu`, },
+					{ value: 'tab tools_menu', label: `also in the Tab context menu`, },
+				], prefix: `Show <b>Unload Other Tabs</b>`, }
+			},
+		},
+	},
 	commands: {
 		title: 'Keyboards shortcuts',
 		default: true,

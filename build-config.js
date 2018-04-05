@@ -12,6 +12,7 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 
 	!options.viewRoot && (options.viewRoot = options.chrome ? 'UnloadTabs.html' : 'UnloadTabs');
 	delete manifestJson.browser_action;
+	delete manifestJson.background.persistent;
 
 	manifestJson.commands = {
 		unloadSelectedTab: {

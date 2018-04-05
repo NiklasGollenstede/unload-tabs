@@ -12,6 +12,8 @@ let debug; options.debug.whenChange(([ value, ]) => { debug = value >= 2; });
 const exports = module.exports = Object.create(Tabs);
 setProp(exports, 'getAsync', function () { return Tabs.get(...arguments); });
 setProp(exports, 'queryAsync', function () { return Tabs.query(...arguments); });
+setProp(exports, 'getEither', function () { return enabled ? tabs.get(...arguments) : Tabs.get(...arguments); });
+setProp(exports, 'queryEither', function () { return enabled ? query(...arguments) : Tabs.query(...arguments); });
 // get all or first matching tab synchronously
 setProp(exports, 'query', query); setProp(exports, 'find', find);
 // get the active tab in a window

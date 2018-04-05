@@ -68,27 +68,37 @@ const menus = {
 		title: 'Unload Other Tabs',
 		id: 'unloadOtherTabs',
 		icons: { 32: 'many.png', },
-		contexts: [ 'tools_menu', ],
+		contexts: options.menus.children.unloadOtherTabs.value.split(' '),
 	},
 };
 Object.values(menus).forEach(menu => Menus.create(menu));
+options.menus.children.unloadOtherTabs.onChange(([ value, ]) => {
+	menus.unloadOtherTabs.contexts = value.split(' ');
+	Menus.update('unloadOtherTabs', { contexts: value.split(' '), });
+});
 
 
 // respond to menu click
 Menus.onClicked.addListener(onClicked);
-async function onClicked({ menuItemId, }, { id, }) { const tab = Tabs.get(id); try { switch (menuItemId) {
+async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { try { switch (menuItemId) {
 	case 'unloadTab': {
-		if (tab.active) { const alt = onClose && findNext(tab); if (alt) {
-			(await Tabs.update(alt.id, { active: true, }));
-		} else {
-			reportError('Not unloading', onClose ? 'No Tab to switch to' : 'Tab switching is disabled');
-		} }
-		(await Tabs.discard(tab.id));
+		if (active) {
+			const tabs = (await Tabs.queryEither({ windowId, }));
+			const alt = findNext(tabs.find(_=>_.active), tabs);
+			if (alt) { (await Tabs.update(alt.id, { active: true, })); }
+			else { reportError('Not unloading', 'No Tab to switch to'); return; }
+		}
+		(await Tabs.discard(id));
+		(await sleep(1000));
+		!(await Tabs.getEither(id)).discarded && reportError(
+			'Failed to unload tab',
+			`Some browser UI tabs and tabs with prompts on close can't be unloaded.`,
+		);
 	} break;
 	case 'unloadOtherTabs': {
-		(await Tabs.discard(Tabs.query({
-			discarded: false, windowId: tab.windowId, pinned: tab.pinned ? undefined : false,
-		}).filter(_=>_.id !== tab.id).map(_=>_.id)));
+		(await Tabs.discard((await Tabs.queryEither({
+			discarded: false, windowId, pinned: pinned ? undefined : false,
+		})).filter(_=>_.id !== id).map(_=>_.id)));
 	} break;
 } } catch (error) { reportError(error); } }
 
@@ -98,7 +108,7 @@ Commands && Commands.onCommand.addListener(onCommand);
 async function onCommand(command) { {
 	debug2 && console.log('command', command);
 } try { switch (command.replace(/_\d$/, '')) {
-	case 'unloadSelectedTab': (await onClicked({ menuItemId: 'unloadTab', }, (await Tabs.queryAsync({
+	case 'unloadSelectedTab': (await onClicked({ menuItemId: 'unloadTab', }, (await Tabs.queryEither({
 		active: true, windowId: (await Windows.getLastFocused({ windowTypes: [ 'normal', ], })).id,
 	}))[0])); break;
 	case 'prevLoadedTab': (await seekNext(-1)); break;
@@ -140,7 +150,7 @@ let activating = null;
 async function onRemoved(id) { // choose the next active tab
 	// debug2 && console.log('closing', id, Tabs.get(id));
 	const tab = Tabs.get(id); if (!tab.active) { return; }
-	const alt = findNext(Tabs.get(id)); if (!alt) { return; }
+	const alt = findNext(Tabs.get(id), Tabs.query({ windowId, })); if (!alt) { return; }
 	debug && console.info('closing tab', id, ', activating', alt.id);
 	activating = alt.id; setTimeout(() => activating === alt.id && (activating = null), 500);
 	setTimeout(() => Tabs.update(alt.id, { active: true, }), 1000);
@@ -176,7 +186,7 @@ async function onUpdated(id, change) { // don't allow tabs to load that are not 
 
 
 // get next loaded tab (on close or unload)
-function findNext(tab) { const { windowId, } = tab;
+function findNext(tab, tabs) { const { windowId, } = tab;
 	debug2 && console.log('findNext', ...arguments);
 	let found = null; function find(tab) { return tab && !tab.discarded && !tab.hidden && (found = tab); }
 
@@ -184,7 +194,7 @@ function findNext(tab) { const { windowId, } = tab;
 		if (find(Tabs.previous(windowId))) { return found; }
 	}
 
-	const tabs = Tabs.query({ windowId, }).sort((a, b) => a.index - b.index);
+	tabs = tabs.sort((a, b) => a.index - b.index);
 	const start = tabs.indexOf(tab); if (start < 0) { return null; }
 	const direction = options.onClose.children.direction.value;
 	// debug2 && console.log(clone(tabs), tab, start);
