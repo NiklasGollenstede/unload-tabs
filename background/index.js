@@ -42,9 +42,8 @@ debug && console.info('Ran updates', updated);
 let onClose = false; options.onClose.whenChange(([ value, ]) => {
 	onClose = value;
 	Tabs.setEnabled(onClose); // must listen first
-	[ onRemoved, onActivated, onUpdated, ].forEach(func =>
-		Tabs[func.name][onClose ? 'addListener' : 'removeListener'](func)
-	);
+	const action = onClose ? addWrappedListener : removeWrappedListener;
+	[ onRemoved, onActivated, onUpdated, ].forEach(func => action(Tabs, func));
 });
 
 
@@ -79,8 +78,8 @@ options.menus.children.unloadOtherTabs.onChange(([ value, ]) => {
 
 
 // respond to menu click
-Menus.onClicked.addListener(onClicked);
-async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { try { switch (menuItemId) {
+addWrappedListener(Menus, onClicked);
+async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { switch (menuItemId) {
 	case 'unloadTab': {
 		if (active) {
 			const tabs = (await Tabs.queryEither({ windowId, }));
@@ -100,26 +99,26 @@ async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { t
 			discarded: false, windowId, pinned: pinned ? undefined : false,
 		})).filter(_=>_.id !== id).map(_=>_.id)));
 	} break;
-} } catch (error) { reportError(error); } }
+} }
 
 
 // respond to (keyboard) commands
-Commands && Commands.onCommand.addListener(onCommand);
+Commands && addWrappedListener(Commands, onCommand);
 async function onCommand(command) { {
 	debug2 && console.log('command', command);
-} try { switch (command.replace(/_\d$/, '')) {
+} switch (command.replace(/_\d$/, '')) {
 	case 'unloadSelectedTab': (await onClicked({ menuItemId: 'unloadTab', }, (await Tabs.queryEither({
 		active: true, windowId: (await Windows.getLastFocused({ windowTypes: [ 'normal', ], })).id,
 	}))[0])); break;
 	case 'prevLoadedTab': (await seekNext(-1)); break;
 	case 'nextLoadedTab': (await seekNext(+1)); break;
-} } catch (error) { reportError(error); } }
+} }
 async function seekNext(direction) {
 	const window = (await Windows.getLastFocused({ windowTypes: [ 'normal', ], populate: !onClose, }));
 	const tabs = (window.tabs || Tabs.query({ windowId: window.id, })).sort((a, b) => a.index - b.index);
 	const start = tabs.findIndex(_=>_.active); if (start < 0) { return; }
 
-	function find(tab) { return tab && !tab.discarded && !tab.hidden && (alt = tab); }
+	function find(tab) { return tab && !tab.discarded && !tab.hidden && (alt = tab) || debug2 && void console.log('skipping tab', clone(tab)); }
 	function increment(index) { return (index + direction + tabs.length) % tabs.length; }
 	let alt; for ( // search in one direction, wrap around and return the original tab if no other is found
 		let i = increment(start);
@@ -148,9 +147,9 @@ options.commands.onAnyChange(async (values, _, { name, model: { maxLength, }, })
 // respond to tab close
 let activating = null;
 async function onRemoved(id) { // choose the next active tab
-	// debug2 && console.log('closing', id, Tabs.get(id));
+	debug2 && console.log('closing', id, Tabs.get(id));
 	const tab = Tabs.get(id); if (!tab.active) { return; }
-	const alt = findNext(Tabs.get(id), Tabs.query({ windowId, })); if (!alt) { return; }
+	const alt = findNext(tab, Tabs.query({ windowId: tab.windowId, })); if (!alt) { return; }
 	debug && console.info('closing tab', id, ', activating', alt.id);
 	activating = alt.id; setTimeout(() => activating === alt.id && (activating = null), 500);
 	setTimeout(() => Tabs.update(alt.id, { active: true, }), 1000);
@@ -214,6 +213,15 @@ function sleep(time) {
 }
 function clone(arg) {
 	return JSON.parse(JSON.stringify(arg));
+}
+
+function addWrappedListener(api, func) {
+	api[func.name].addListener(func.wrapped || (func.wrapped = async function() { try {
+		(await func.apply(this, arguments));
+	} catch (error) { reportError(`Failed to handle ${func.name}`, error); } }));
+}
+function removeWrappedListener(api, func) {
+	func.wrapped && api[func.name].removeListener(func.wrapped);
 }
 
 
