@@ -23,6 +23,13 @@ const model = {
 					{ value: -1, label: `left`, },
 				], prefix: `or the closest loaded tab, prefering `, },
 			},
+			preemptive: {
+				default: false,
+				input: { type: 'menulist', options: [
+					{ value: true, label: `always`, },
+					{ value: false, label: `only if Firefox chooses a loaded tab`, },
+				], prefix: `Do that`, },
+			},
 		},
 	},
 	menus: {
@@ -35,7 +42,7 @@ const model = {
 				input: { type: 'menulist', options: [
 					{ value: 'tools_menu', label: `only in the Tools menu`, },
 					{ value: 'tab tools_menu', label: `also in the Tab context menu`, },
-				], prefix: `Show <b>Unload Other Tabs</b>`, }
+				], prefix: `Show <b>Unload Other Tabs</b>`, },
 			},
 		},
 	},

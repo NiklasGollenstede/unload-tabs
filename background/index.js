@@ -75,6 +75,7 @@ options.menus.children.unloadOtherTabs.onChange(([ value, ]) => {
 	menus.unloadOtherTabs.contexts = value.split(' ');
 	Menus.update('unloadOtherTabs', { contexts: value.split(' '), });
 });
+// could use .onShown and .update(, { enabled, }) .refresh()
 
 
 // respond to menu click
@@ -82,8 +83,8 @@ addWrappedListener(Menus, onClicked);
 async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { switch (menuItemId) {
 	case 'unloadTab': {
 		if (active) {
-			const tabs = (await Tabs.queryEither({ windowId, }));
-			const alt = findNext(tabs.find(_=>_.active), tabs);
+			const tabs = (await Tabs.queryEither({ windowId, })), i = tabs.find(_=>_.active);
+			const alt = findNext(tabs[i], tabs) || !onClose && (tabs[i + 1] || tabs[i - 1]);
 			if (alt) { (await Tabs.update(alt.id, { active: true, })); }
 			else { reportError('Not unloading', 'No Tab to switch to'); return; }
 		}
@@ -152,12 +153,12 @@ async function onRemoved(id) { // choose the next active tab
 	const alt = findNext(tab, Tabs.query({ windowId: tab.windowId, })); if (!alt) { return; }
 	debug && console.info('closing tab', id, ', activating', alt.id);
 	activating = alt.id; setTimeout(() => activating === alt.id && (activating = null), 500);
-	setTimeout(() => Tabs.update(alt.id, { active: true, }), 1000);
+	options.onClose.children.preemptive.value && Tabs.update(alt.id, { active: true, });
 }
 async function onActivated({ tabId: id, }) { // don't allow the wrong tab to be activated (shortly after closing)
 	if (!activating || activating === id) { return; }
 
-	// BUG[FF60]: If a not-restored tab it incorrectly not marked as discarded, onUpdated won't fire.
+	// BUG[FF60]: If a not-restored tab is incorrectly not marked as discarded, onUpdated won't fire.
 	// TODO: Tabs.get(id).discarded was already patched by the Tabs module.
 	// The proper solution is probably to have the Tabs module emit patched events
 	// (instead of just patching the tabs state and forwarding the raw events).
@@ -170,6 +171,7 @@ async function onActivated({ tabId: id, }) { // don't allow the wrong tab to be 
 	}
 }
 async function onUpdated(id, change) { // don't allow tabs to load that are not active
+	// TODO: this (probably) causes Firefox to hang when rapidly restoring tabs
 	if (change.discarded !== false) { return; }
 	const tab = Tabs.get(id); if (tab.active) { return; }
 	// this also happens when legitimately focusing an unloaded tab (they won't be activated yet), but discarding won't have an effect
