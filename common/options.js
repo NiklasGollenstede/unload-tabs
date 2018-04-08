@@ -7,13 +7,13 @@ const isBeta = (/^\d+\.\d+.\d+(?!$)/).test((global.browser || global.chrome).run
 
 const model = {
 	onClose: {
-		title: 'On tab close',
+		title: 'On Tab close',
 		default: true,
-		input: { type: 'boolean', suffix: `prevent Firefox from loading unloaded tabs.`, },
+		input: { type: 'boolean', suffix: `prevent Firefox from loading unloaded Tabs.`, },
 		children: {
 			previous: {
 				default: true,
-				input: { type: 'boolean', prefix: `Instead select<br>`, suffix: `the previous focused tab,`, },
+				input: { type: 'boolean', prefix: `Instead select<br>`, suffix: `the previous focused Tab,`, },
 			},
 			direction: {
 				default: +1,
@@ -21,13 +21,13 @@ const model = {
 				input: { type: 'menulist', options: [
 					{ value: +1, label: `right`, },
 					{ value: -1, label: `left`, },
-				], prefix: `or the closest loaded tab, prefering `, },
+				], prefix: `or the closest loaded Tab, prefering `, },
 			},
 			preemptive: {
 				default: false,
 				input: { type: 'menulist', options: [
 					{ value: true, label: `always`, },
-					{ value: false, label: `only if Firefox chooses a loaded tab`, },
+					{ value: false, label: `only if Firefox chooses a loaded Tab`, },
 				], prefix: `Do that`, },
 			},
 		},
@@ -55,19 +55,19 @@ const model = {
 				description: `<b>Unload</b> the current Tab`,
 				default: [ ],
 				maxLength: 2,
-				input: { type: 'command', default: 'Alt+W', },
+				input: { type: 'command', default: 'Alt + W', },
 			},
 			prevLoadedTab: {
 				description: `Switch to the <b>previous</b> loaded Tab`,
-				default: 'Alt+PageUp',
+				default: 'Alt + PageUp',
 				minLength: 1, maxLength: 2,
-				input: { type: 'command', default: 'Alt+PageUp', },
+				input: { type: 'command', default: 'Alt + PageUp', },
 			},
 			nextLoadedTab: {
 				description: `Switch to the <b>next</b> loaded Tab`,
-				default: 'Alt+PageDown',
+				default: 'Alt + PageDown',
 				minLength: 1, maxLength: 2,
-				input: { type: 'command', default: 'Alt+PageDown', },
+				input: { type: 'command', default: 'Alt + PageDown', },
 			},
 		},
 	},

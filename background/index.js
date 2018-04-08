@@ -1,5 +1,5 @@
 (function(global) { 'use strict'; define(async ({ // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
-	'node_modules/web-ext-utils/browser/': { Menus, Commands, Windows, },
+	'node_modules/web-ext-utils/browser/': { Menus, Commands, Windows, Tabs: _Tabs, },
 	'node_modules/web-ext-utils/utils/': { reportError, /*reportSuccess,*/ },
 	'node_modules/web-ext-utils/update/': updated,
 	'common/options': options,
@@ -40,19 +40,8 @@ debug && console.info('Ran updates', updated);
 
 // only keep track of Tabs while options.onClose.value is true
 let onClose = false; options.onClose.whenChange(([ value, ]) => {
-	onClose = value;
-	Tabs.setEnabled(onClose); // must listen first
-	const action = onClose ? addWrappedListener : removeWrappedListener;
-	[ onRemoved, onActivated, onUpdated, ].forEach(func => action(Tabs, func));
+	onClose = value; Tabs.setEnabled(onClose);
 });
-
-
-// keep a copy of the tab that last had its favicon removed (which is pointless as the favIconUrl cant be set, see bugzilla#1450386)
-/*let lastRemovedFavicon = null; Tabs.onUpdated.addListener((id, change) => { // must run first
-	if ('discarded' in change) { return; }
-	lastRemovedFavicon = change.favIconUrl === null && onClose ? clone(Tabs.get(id)) : null;
-	debug2 && console.log('lastRemovedFavicon', lastRemovedFavicon, lastRemovedFavicon && lastRemovedFavicon.favIconUrl);
-});*/
 
 
 // add menus
@@ -83,24 +72,32 @@ addWrappedListener(Menus, onClicked);
 async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { switch (menuItemId) {
 	case 'unloadTab': {
 		if (active) {
-			const tabs = (await Tabs.queryEither({ windowId, })), i = tabs.find(_=>_.active);
+			const tabs = (await Tabs.queryAsync({ windowId, })), i = tabs.findIndex(_=>_.active);
 			const alt = findNext(tabs[i], tabs) || !onClose && (tabs[i + 1] || tabs[i - 1]);
 			if (alt) { (await Tabs.update(alt.id, { active: true, })); }
 			else { reportError('Not unloading', 'No Tab to switch to'); return; }
 		}
+		discarding = id; setTimeout(() => discarding === id && (discarding = null), 500);
 		(await Tabs.discard(id));
 		(await sleep(1000));
-		!(await Tabs.getEither(id)).discarded && reportError(
+		!(await Tabs.getAsync(id)).discarded && reportError(
 			'Failed to unload tab',
 			`Some browser UI tabs and tabs with prompts on close can't be unloaded.`,
 		);
 	} break;
 	case 'unloadOtherTabs': {
-		(await Tabs.discard((await Tabs.queryEither({
+		(await Tabs.discard((await Tabs.queryAsync({
 			discarded: false, windowId, pinned: pinned ? undefined : false,
 		})).filter(_=>_.id !== id).map(_=>_.id)));
 	} break;
 } }
+// BUG[FF60]: tab will report as loading and non-discarded directly after discarding,
+// but that doesn't reflect in the UI. Discarding it again fixes the tab state
+let discarding = null; addWrappedListener(_Tabs, function onUpdated(id, change) {
+	if (id !== discarding || change.discarded !== false) { return; }
+	debug && console.warn('[BUG] just-discarded tab updating as non-discarded', id);
+	Tabs.discard(id);
+});
 
 
 // respond to (keyboard) commands
@@ -108,7 +105,7 @@ Commands && addWrappedListener(Commands, onCommand);
 async function onCommand(command) { {
 	debug2 && console.log('command', command);
 } switch (command.replace(/_\d$/, '')) {
-	case 'unloadSelectedTab': (await onClicked({ menuItemId: 'unloadTab', }, (await Tabs.queryEither({
+	case 'unloadSelectedTab': (await onClicked({ menuItemId: 'unloadTab', }, (await Tabs.queryAsync({
 		active: true, windowId: (await Windows.getLastFocused({ windowTypes: [ 'normal', ], })).id,
 	}))[0])); break;
 	case 'prevLoadedTab': (await seekNext(-1)); break;
@@ -146,42 +143,47 @@ options.commands.onAnyChange(async (values, _, { name, model: { maxLength, }, })
 
 
 // respond to tab close
-let activating = null;
-async function onRemoved(id) { // choose the next active tab
-	debug2 && console.log('closing', id, Tabs.get(id));
-	const tab = Tabs.get(id); if (!tab.active) { return; }
-	const alt = findNext(tab, Tabs.query({ windowId: tab.windowId, })); if (!alt) { return; }
-	debug && console.info('closing tab', id, ', activating', alt.id);
+let activating = null, restoring = null;
+Tabs.onRemoved(async (tab, { isWindowClosing, }) => {
+	if (isWindowClosing || !tab.active && !restoring) { return; }
+	debug2 && console.log('active tab closing', tab.id, tab);
+
+	const alt = findNext(tab, Tabs.query({ windowId: tab.windowId, }));
+	debug && console.info('closing tab', tab.id, ', activating', alt && alt.id);
+	if (!alt) { return; }
+
 	activating = alt.id; setTimeout(() => activating === alt.id && (activating = null), 500);
 	options.onClose.children.preemptive.value && Tabs.update(alt.id, { active: true, });
-}
-async function onActivated({ tabId: id, }) { // don't allow the wrong tab to be activated (shortly after closing)
-	if (!activating || activating === id) { return; }
+	if (restoring) { forceActivate(alt.id); forceDiscard(restoring); }
+});
+Tabs.onUpdated(async (tab, change) => {
+	if (change.active === true && activating && activating !== tab.id) {
+		debug && console.warn('wrong tab focusing', tab.id, clone(tab));
 
-	// BUG[FF60]: If a not-restored tab is incorrectly not marked as discarded, onUpdated won't fire.
-	// TODO: Tabs.get(id).discarded was already patched by the Tabs module.
-	// The proper solution is probably to have the Tabs module emit patched events
-	// (instead of just patching the tabs state and forwarding the raw events).
-	Tabs.get(id).discarded && onUpdated(id, { discarded: false, });
+		(await forceActivate(activating));
+	}
+	if (change.discarded === false && !tab.active) {
+		debug && console.warn('inactive tab restoring', tab.id, clone(tab));
 
-	debug && console.warn('focusing wrong tab', id, clone(Tabs.get(id)));
-	Tabs.update(activating, { active: true, });
-	for (const time of [ 10, 35, 70, 120, ]) { (await sleep(time));
-		Tabs.update(activating, { active: true, }); debug && console.info('force activate', id);
+		tab.restoring = true; setTimeout(() => (tab.restoring = false), 500); // TODO: wait for status === 'complete'?
+		if (!activating) {
+			restoring = tab.id; setTimeout(() => restoring === tab.id && (restoring = null), 500);
+		} else { (await forceDiscard(tab.id)); }
+	}
+});
+async function forceActivate(id) {
+	debug && console.info('start force activate', id);
+	Tabs.update(id, { active: true, });
+	for (const time of [ 10, 35, /*70, 120,*/ ]) { (await sleep(time));
+		Tabs.update(id, { active: true, }); debug && console.info('force activate', id);
 	}
 }
-async function onUpdated(id, change) { // don't allow tabs to load that are not active
-	// TODO: this (probably) causes Firefox to hang when rapidly restoring tabs
-	if (change.discarded !== false) { return; }
-	const tab = Tabs.get(id); if (tab.active) { return; }
-	// this also happens when legitimately focusing an unloaded tab (they won't be activated yet), but discarding won't have an effect
-	debug && console.warn('background tab loads', id, clone(Tabs.get(id)));
-	// const favIconUrl = lastRemovedFavicon && lastRemovedFavicon.id === id && lastRemovedFavicon.favIconUrl;
-	Tabs.discard(id); tab.discarded = true; // so that on the close event (which happens after this one in FF60) this tab won't be selected
-	for (const time of [ 10, 35, 70, 120, ]) { (await sleep(time));
+async function forceDiscard(id) {
+	debug && console.info('start force discard', id);
+	Tabs.discard(id);
+	for (const time of [ 10, 35, /*70, 120,*/ ]) { (await sleep(time));
 		Tabs.discard(id); debug && console.info('force discard', id);
 	}
-	// !tab.favIconUrl && favIconUrl && Tabs.update(id, { favIconUrl, }); // restore favicon
 }
 // restoring tabs doesn't do any webRequests and webNavigation can't be canceled
 
@@ -189,14 +191,19 @@ async function onUpdated(id, change) { // don't allow tabs to load that are not 
 // get next loaded tab (on close or unload)
 function findNext(tab, tabs) { const { windowId, } = tab;
 	debug2 && console.log('findNext', ...arguments);
-	let found = null; function find(tab) { return tab && !tab.discarded && !tab.hidden && (found = tab); }
+	let found = null; function find(tab) { if (
+		tab && !tab.discarded && !tab.hidden && !tab.restoring
+	) { found = tab; return true; } return false; }
 
 	if (options.onClose.children.previous.value) {
 		if (find(Tabs.previous(windowId))) { return found; }
 	}
 
 	tabs = tabs.sort((a, b) => a.index - b.index);
-	const start = tabs.indexOf(tab); if (start < 0) { return null; }
+	let start = tabs.indexOf(tab); if (start < 0) {
+		while (start < tabs.length && tabs[++start].index < tab.index) { void 0; }
+		tabs.splice(start, 0, null); console.log('splice', start);
+	}
 	const direction = options.onClose.children.direction.value;
 	// debug2 && console.log(clone(tabs), tab, start);
 
@@ -222,9 +229,9 @@ function addWrappedListener(api, func) {
 		(await func.apply(this, arguments));
 	} catch (error) { reportError(`Failed to handle ${func.name}`, error); } }));
 }
-function removeWrappedListener(api, func) {
+/*function removeWrappedListener(api, func) {
 	func.wrapped && api[func.name].removeListener(func.wrapped);
-}
+}*/
 
 
 // Tree Style Tab integration
@@ -234,7 +241,6 @@ tst.enable(); // TODO: add option
 module.exports = {
 	menus,
 	onClicked, onCommand,
-	onRemoved, onActivated, onUpdated,
 	findNext, seekNext,
 };
 

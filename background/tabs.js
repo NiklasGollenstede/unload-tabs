@@ -1,36 +1,36 @@
 (function(global) { 'use strict'; define(async ({ // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 	'node_modules/web-ext-utils/browser/': { Tabs, },
+	'node_modules/web-ext-utils/utils/event': { setEvent, },
 	'common/options': options,
 	module,
 }) => { /* global setTimeout, */
-let debug; options.debug.whenChange(([ value, ]) => { debug = value >= 2; });
+let debug, debug2; options.debug.whenChange(([ value, ]) => { debug = value; debug2 = value >= 2; });
 
 /**
  * Synchronous cache for Tabs.get/.query()
  */
 // browser.tabs properties
-const exports = module.exports = Object.create(Tabs);
-setProp(exports, 'getAsync', function () { return Tabs.get(...arguments); });
-setProp(exports, 'queryAsync', function () { return Tabs.query(...arguments); });
-setProp(exports, 'getEither', function () { return enabled ? tabs.get(...arguments) : Tabs.get(...arguments); });
-setProp(exports, 'queryEither', function () { return enabled ? query(...arguments) : Tabs.query(...arguments); });
-// get all or first matching tab synchronously
-setProp(exports, 'query', query); setProp(exports, 'find', find);
-// get the active tab in a window
-setProp(exports, 'active',   windowId => tabs.get(active.get(windowId)) || null);
-// get the previous active tab in a window
-setProp(exports, 'previous', windowId => tabs.get(previous.get(windowId)) || null);
-// Map methods (including synchronous get)
-[ 'get', 'has', 'entries', 'keys', 'values', 'forEach', Symbol.iterator, ]
-.forEach(name => setProp(exports, name, function () { return Map.prototype[name].apply(tabs, arguments); }));
-// manually enables or disables the module
-setProp(exports, 'setEnabled', _=>_? enable() : disable());
-
+const exports = module.exports = {
+	update: Tabs.update, discard: Tabs.discard, query,
+	// get/query falling back to native Tabs while the module is disabled
+	getAsync() { return enabled ? tabs.get(...arguments) : Tabs.get(...arguments); },
+	queryAsync() { return enabled ? query(...arguments) : Tabs.query(...arguments); },
+	// get the active or previous active tab in a window
+	active(windowId) { return tabs.get(active.get(windowId)) || null; },
+	previous(windowId) { return tabs.get(previous.get(windowId)) || null; },
+	// enables or disables the module, disabled by default
+	setEnabled(bool) { bool ? enable() : disable(); },
+	// inherits Map methods (including synchronous get)
+	__proto__: new Map,
+}; void find;
+const fireCreated = setEvent(exports, 'onCreated', { lazy: false, });
+const fireUpdated = setEvent(exports, 'onUpdated', { lazy: false, });
+const fireRemoved = setEvent(exports, 'onRemoved', { lazy: false, });
 
 /// implementation
 
 // cache
-const tabs = new Map/*<id,{ id, discarded, active, hidden, openerTabId, windowId, index, pinned, favIconUrl, }>*/;
+const tabs = Object.getPrototypeOf(exports); // new Map/*<id,{ id, discarded, active, hidden, windowId, index, pinned, }>*/;
 const active = new Map/*<windowId,id>*/, previous = new Map/*<windowId,id>*/;
 
 
@@ -52,39 +52,66 @@ async function disable() {
 
 
 // add and basic update
-listen(Tabs.onCreated, props => updateTab(props));
-listen(Tabs.onUpdated, (id, change, props) => {
-	// BUG[FF60]: When loading unloaded tab, the favIconUrl is restored, but that is not always reported properly.
-	('status' in change) && ('favIconUrl' in props) && Tabs.get(id).favIconUrl !== props.favIconUrl && (change.favIconUrl = props.favIconUrl);
-
-	updateTab(props, change);
+listen(Tabs.onCreated, function (props) {
+	debug2 && console.log('onCreated', ...arguments);
+	addOrUpdateTab(props.id, props, props);
 });
-function updateTab(props, change = props) {
-	const tab = tabs.get(props.id); if (tab) {
-		if (('index' in change) && tab.index !== change.index) { moveTab(tab.id, tab.index, change.index); }
-		Object.entries(change).forEach(([ key, value, ]) => (key in tab) && (tab[key] = value));
-		debug && console.log('updateTab', props.id, change, tab);
+listen(Tabs.onUpdated, function (id, change, props) {
+	debug2 && console.log('onUpdated', ...arguments);
+
+	// BUG[FF60]: When loading unloaded tab, the favIconUrl is restored, but that is not always reported properly.
+	// ('status' in change) && ('favIconUrl' in props) && Tabs.get(id).favIconUrl !== props.favIconUrl && (change.favIconUrl = props.favIconUrl); // don't need it
+
+	addOrUpdateTab(id, change, props);
+});
+function addOrUpdateTab(id, change, props) {
+	// BUG[FF60]: tabs sometimes get updated before they are created, so direct both events here
+	// and decide based on the existence of the target tab what it actually is
+	const tab = tabs.get(id); if (tab) {
+		debug && change === props && console.warn('[BUG] receiving create update for existing tab', id);
+		// if there was an early update, it's index may have been wrong,
+		// so explicitly move the tab to fix the .index of shifted tabs
+		if (change === props && tab.index !== change.index) { moveTab(tab.id, tab.index, change.index); }
+		updateTab(tab, change); // apply whatever else might have changed
+		// TODO: which information would actually be correct, the early update or the late crate?
 	} else { addTab(props); }
 }
-function addTab({ id, discarded, active, hidden, openerTabId, windowId, index, pinned, favIconUrl, }) {
-	// BUG[FF60]: FF *sometimes* reports never-loaded tabs as not discarded (this is supposed to be fixed, but it does still happen in FF60)
-	!discarded && arguments[0].isArticle === undefined && arguments[0].status === 'complete' && (discarded = true);
+function updateTab(tab, change) {
+	let changed = false; Object.entries(change).forEach(([ key, value, ]) => {
+		if (!(key in tab) || tab[key] === value) { delete change[key]; }
+		else { tab[key] = value; changed = true; }
+	}); if (!changed) { return; }
 
-	tabs.set(id, { id, discarded, active, hidden, openerTabId, windowId, index, pinned, favIconUrl, __proto__: null, });
-	query({ windowId, }).forEach(tab => tab.index > index && tab.index++);
-	debug && console.log('addTab', id, tabs.get(id));
+	debug2 && console.log('fireUpdated', tab.id, change, tab);
+	fireUpdated([ tab, change, ]);
+}
+function addTab({ id, discarded, active, hidden, windowId, index, pinned, }) {
+	// BUG[FF60]: FF *sometimes* reports never-loaded tabs as not discarded (this is supposed to be fixed, but it does still happen in FF60)
+	if (!discarded && arguments[0].isArticle === undefined && arguments[0].status === 'complete') {
+		debug && console.warn('[BUG] pending tab reported as non-discarded', id);
+		discarded = true;
+	}
+
+	const tab = { id, discarded, active, hidden, windowId, index, pinned, __proto__: null, };
+	tabs.set(id, tab);
+
+	debug2 && console.log('fireCreated', id, tab);
+	fireCreated([ tab, ]);
+
+	query({ windowId, }).forEach(tab => tab.index > index && updateTab(tab, { index: tab.index + 1, }));
 }
 
 
 // activate (focus)
 listen(Tabs.onActivated, function ({ tabId: id, windowId, }) {
-	debug && console.log('onActivated', ...arguments);
-	const last = find({ windowId, active: true, }); last && (last.active = false); // old in same window
-	const tab = tabs.get(id); tab.active = true; setActive(tab);
+	debug2 && console.log('onActivated', ...arguments);
+	const tab = tabs.get(id), last = find({ windowId, active: true, });
 
 	// BUG[FF60]: If a not-restored tab it incorrectly not marked as discarded, onUpdated won't fire.
 	// Normally, it fires before onActivated.
-	tabs.get(id).discarded && updateTab({ id, }, { discarded: false, });
+	tab.discarded && updateTab(tab, { discarded: false, });
+
+	setActive(tab); updateTab(tab, { active: true, }); last && updateTab(last, { active: false, });
 });
 function setActive(tab) {
 	previous.set(tab.windowId, active.get(tab.windowId)); active.set(tab.windowId, tab.id);
@@ -94,32 +121,37 @@ function setActive(tab) {
 // move within window
 listen(Tabs.onMoved, (id, { fromIndex, toIndex, }) => moveTab(id, fromIndex, toIndex));
 function moveTab(id, from, to) {
-	debug && console.log('moveTab', ...arguments);
-	const tab = tabs.get(id); const move = query({ windowId: tab.windowId, });
+	debug2 && console.log('moveTab', ...arguments);
+	const tab = tabs.get(id); updateTab(tab, { index: to, });
+	const move = query({ windowId: tab.windowId, });
 	if (from < to) {
-		move.forEach(tab => tab.index > from && tab.index <= to && tab.index--);
+		move.forEach(tab => tab.index > from && tab.index <= to && updateTab(tab, { index: tab.index - 1, }));
 	} else {
-		move.forEach(tab => tab.index < from && tab.index >= to && tab.index++);
-	} tab.index = to;
+		move.forEach(tab => tab.index < from && tab.index >= to && updateTab(tab, { index: tab.index + 1, }));
+	}
 }
 
 
 // moved to window (from other window)
 listen(Tabs.onAttached, function (id, { newWindowId, newPosition: newIndex, }) {
-	debug && console.log('onAttached', ...arguments);
+	debug2 && console.log('onAttached', ...arguments);
 	const tab = tabs.get(id); const { windowId: oldWindowId, index: oldIndex, } = tab;
-	query({ windowId: oldWindowId, }).forEach(tab => tab.index >  oldIndex && tab.index--);
-	query({ windowId: newWindowId, }).forEach(tab => tab.index >= newIndex && tab.index++);
-	tab.windowId = newWindowId; tab.index = newIndex;
+	query({ windowId: oldWindowId, }).forEach(tab => tab.index >  oldIndex && updateTab(tab, { index: tab.index - 1, }));
+	query({ windowId: newWindowId, }).forEach(tab => tab.index >= newIndex && updateTab(tab, { index: tab.index + 1, }));
+	updateTab(tab, { windowId: newWindowId, index: newIndex, });
 });
 
 
 // closed
-listen(Tabs.onRemoved, function (id) { setTimeout(() => {
-	debug && console.log('onRemoved', ...arguments);
-	const { windowId, index, active, } = tabs.get(id); tabs.delete(id);
-	query({ windowId, }).forEach(tab => tab.index > index && tab.index--);
-	active && console.warn('removed active tab');
+listen(Tabs.onRemoved, function (id, { isWindowClosing, }) { setTimeout(() => {
+	debug2 && console.log('onRemoved', ...arguments);
+	const tab = tabs.get(id), { windowId, index, active, } = tab; tabs.delete(id);
+
+	debug2 && console.log('fireRemoved', tab);
+	fireRemoved([ tab, { isWindowClosing, }, ]);
+
+	!isWindowClosing && query({ windowId, }).forEach(tab => tab.index > index && updateTab(tab, { index: tab.index - 1, }));
+	debug2 && !isWindowClosing && active && console.warn('removed active tab');
 }); });
 
 
@@ -135,11 +167,5 @@ function queryOrFind(one, query) {
 }
 function query(props) { return queryOrFind(false, props); }
 function find (props) { return queryOrFind(true,  props); }
-
-
-// helpers
-function setProp(obj, key, value) {
-	return Object.defineProperty(obj, key, { value, enumerable: true, configurable: true, writeable: true, });
-}
 
 }); })(this);
