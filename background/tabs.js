@@ -30,7 +30,7 @@ const fireRemoved = setEvent(exports, 'onRemoved', { lazy: false, });
 /// implementation
 
 // cache
-const tabs = Object.getPrototypeOf(exports); // new Map/*<id,{ id, discarded, active, hidden, windowId, index, pinned, }>*/;
+const tabs = Object.getPrototypeOf(exports); // new Map/*<id,{ id, discarded, active, hidden, status, windowId, index, pinned, }>*/;
 const active = new Map/*<windowId,id>*/, previous = new Map/*<windowId,id>*/;
 
 
@@ -82,20 +82,23 @@ function updateTab(tab, change) {
 		else { tab[key] = value; changed = true; }
 	}); if (!changed) { return; }
 
-	debug2 && console.log('fireUpdated', tab.id, change, tab);
+	debug2 && console.log('fireUpdated', tab.id, change, clone(tab));
 	fireUpdated([ tab, change, ]);
 }
-function addTab({ id, discarded, active, hidden, windowId, index, pinned, }) {
+function addTab({ id, discarded, active, hidden, status, windowId, index, pinned, }) {
 	// BUG[FF60]: FF *sometimes* reports never-loaded tabs as not discarded (this is supposed to be fixed, but it does still happen in FF60)
 	if (!discarded && arguments[0].isArticle === undefined && arguments[0].status === 'complete') {
 		debug && console.warn('[BUG] pending tab reported as non-discarded', id);
 		discarded = true;
 	}
 
-	const tab = { id, discarded, active, hidden, windowId, index, pinned, __proto__: null, };
-	tabs.set(id, tab);
+	const tab = {
+		id: +id, discarded: discarded || false, active: active || false, hidden: hidden || false,
+		status, windowId: +windowId, index: +index, pinned: pinned || false, __proto__: null,
+		restoring: false, // custom
+	}; tabs.set(id, tab);
 
-	debug2 && console.log('fireCreated', id, tab);
+	debug2 && console.log('fireCreated', id, clone(tab));
 	fireCreated([ tab, ]);
 
 	query({ windowId, }).forEach(tab => tab.index > index && updateTab(tab, { index: tab.index + 1, }));
@@ -147,7 +150,7 @@ listen(Tabs.onRemoved, function (id, { isWindowClosing, }) { setTimeout(() => {
 	debug2 && console.log('onRemoved', ...arguments);
 	const tab = tabs.get(id), { windowId, index, active, } = tab; tabs.delete(id);
 
-	debug2 && console.log('fireRemoved', tab);
+	debug2 && console.log('fireRemoved', id, clone(tab));
 	fireRemoved([ tab, { isWindowClosing, }, ]);
 
 	!isWindowClosing && query({ windowId, }).forEach(tab => tab.index > index && updateTab(tab, { index: tab.index - 1, }));
@@ -167,5 +170,9 @@ function queryOrFind(one, query) {
 }
 function query(props) { return queryOrFind(false, props); }
 function find (props) { return queryOrFind(true,  props); }
+
+function clone(arg) {
+	return JSON.parse(JSON.stringify(arg));
+}
 
 }); })(this);

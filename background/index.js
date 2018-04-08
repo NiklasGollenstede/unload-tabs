@@ -148,9 +148,8 @@ Tabs.onRemoved(async (tab, { isWindowClosing, }) => {
 	if (isWindowClosing || !tab.active && !restoring) { return; }
 	debug2 && console.log('active tab closing', tab.id, tab);
 
-	const alt = findNext(tab, Tabs.query({ windowId: tab.windowId, }));
-	debug && console.info('closing tab', tab.id, ', activating', alt && alt.id);
-	if (!alt) { return; }
+	const alt = findNext(tab); if (!alt) { return; }
+	debug && console.info('activating', alt.id);
 
 	activating = alt.id; setTimeout(() => activating === alt.id && (activating = null), 500);
 	options.onClose.children.preemptive.value && Tabs.update(alt.id, { active: true, });
@@ -174,14 +173,14 @@ Tabs.onUpdated(async (tab, change) => {
 async function forceActivate(id) {
 	debug && console.info('start force activate', id);
 	Tabs.update(id, { active: true, });
-	for (const time of [ 10, 35, /*70, 120,*/ ]) { (await sleep(time));
+	for (const time of [ 6, 12, 25, 45, /*70, 120,*/ ]) { (await sleep(time));
 		Tabs.update(id, { active: true, }); debug && console.info('force activate', id);
 	}
 }
 async function forceDiscard(id) {
 	debug && console.info('start force discard', id);
 	Tabs.discard(id);
-	for (const time of [ 10, 35, /*70, 120,*/ ]) { (await sleep(time));
+	for (const time of [ 6, 12, 25, 45, /*70, 120,*/ ]) { (await sleep(time));
 		Tabs.discard(id); debug && console.info('force discard', id);
 	}
 }
@@ -199,10 +198,12 @@ function findNext(tab, tabs) { const { windowId, } = tab;
 		if (find(Tabs.previous(windowId))) { return found; }
 	}
 
-	tabs = tabs.sort((a, b) => a.index - b.index);
+	tabs = (tabs || Tabs.query({
+		windowId: tab.windowId, discarded: false, hidden: false, restoring: false,
+	})).sort((a, b) => a.index - b.index);
 	let start = tabs.indexOf(tab); if (start < 0) {
-		while (start < tabs.length && tabs[++start].index < tab.index) { void 0; }
-		tabs.splice(start, 0, null); console.log('splice', start);
+		while (++start < tabs.length && tabs[start].index < tab.index) { void 0; }
+		tabs.splice(start, 0, null);
 	}
 	const direction = options.onClose.children.direction.value;
 	// debug2 && console.log(clone(tabs), tab, start);
