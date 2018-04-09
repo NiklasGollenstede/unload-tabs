@@ -41,7 +41,14 @@ function ensureEnabled() { if (!enabled) { throw new Error(`Tabs cache is not ac
 async function enable() {
 	if (enabled) { return; } enabled = true;
 	listeners.forEach(([ event, listener, ]) => event.addListener(listener));
-	(await Tabs.query({ })).forEach(addTab);
+	(await Tabs.query({ })).forEach(props => {
+		// BUG[FF60]: FF *sometimes* reports never-loaded tabs as not discarded (this is supposed to be fixed, but it does still happen in FF60)
+		if (!props.discarded && props.isArticle === undefined && props.status === 'complete') {
+			debug && console.warn('[BUG] pending tab reported as non-discarded', id);
+			props.discarded = true;
+		}
+		addTab(props);
+	});
 	query({ active: true, }).forEach(setActive);
 }
 async function disable() {
@@ -86,12 +93,6 @@ function updateTab(tab, change) {
 	fireUpdated([ tab, change, ]);
 }
 function addTab({ id, discarded, active, hidden, status, windowId, index, pinned, }) {
-	// BUG[FF60]: FF *sometimes* reports never-loaded tabs as not discarded (this is supposed to be fixed, but it does still happen in FF60)
-	if (!discarded && arguments[0].isArticle === undefined && arguments[0].status === 'complete') {
-		debug && console.warn('[BUG] pending tab reported as non-discarded', id);
-		discarded = true;
-	}
-
 	const tab = {
 		id: +id, discarded: discarded || false, active: active || false, hidden: hidden || false,
 		status, windowId: +windowId, index: +index, pinned: pinned || false, __proto__: null,
