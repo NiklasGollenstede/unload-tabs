@@ -71,13 +71,20 @@ const model = {
 			},
 		},
 	},
+	'intregrate.tst': {
+		title: 'Integrate with Tree Style Tabs [ᴇxᴘᴇʀɪᴍᴇɴᴛᴀʟ]',
+		description: `Only effective if Tree Style Tabs is already installed and activated.
+		<br>Please re-enable if the integration fails.`,
+		default: false,
+		input: { type: 'boolean', suffix: `Dim unloaded Tabs and add context menu options.`, },
+	},
 	debug: {
-		title: 'Debug Level',
+		title: 'Debug log verbosity',
 		expanded: false,
 		default: +isBeta,
-		hidden: !isBeta,
+	//	hidden: !isBeta,
 		restrict: { type: 'number', from: 0, to: 2, match: { exp: /^\d$/, message: 'This value must be an integer', }, },
-		input: { type: 'number', suffix: `set to > 0 to enable some diagnostic logging`, },
+		input: { type: 'number', suffix: `set 0 to disable, 1 for some, 2 for a lot of diagnostic logging`, },
 	},
 };
 

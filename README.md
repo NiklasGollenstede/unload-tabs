@@ -1,3 +1,9 @@
+
+# Unload Tabs
+
+## Description
+<!-- this HTML can be copied as the AMO description -->
+
 <strong>Features:</strong>
 <ul>
 	<li> adds a context menu entry to <ul>
@@ -12,23 +18,16 @@
 		<li> the shortcut can be changed (currently requires you to disable/re-enable the add-on) </li>
 	</ul></li>
 	<li> compatible with <ul>
-		<li> <a href="https://wiki.mozilla.org/Security/Contextual_Identity_Project/Containers">Container Tabs</a>: unloaded tabs stay in the correct container </li>
-		<li> <a href="https://addons.mozilla.org/addon/tab-groups-panorama">Tab Groups</a>: works only on the tabs of the current group, doesn't jump between groups and the menu items show up in the tab overview </li>
-		<li> <a href="https://addons.mozilla.org/addon/tree-style-tab/">Tree Style Tab</a>: additional unload subtree menu entry (the positioning of unloaded tabs in treees is sometimes wrong) </li>
-		<li> <a href="https://addons.mozilla.org/addon/multiple-tab-handler/">Multiple Tab Handler</a>: additional unload selected tabs menu entry </li>
+		<li> Tree Style Tab: adds context menus and styles to the sidebar </li>
+		<li> Container Tabs: unloaded tabs stay in the correct container </li>
+		<li> Hidden Tabs (e.g. Tab Groups): works only on currently visible tabs </li>
 	</ul></li>
-	<li> can be removed without leaving anything behind --> just try it </li>
+	<li> can be removed without leaving anything behind or closing unloaded tabs --> just try it </li>
 </ul>
 
 
-<strong>Why</strong> use this add-on and not any of the others that does almost the same?
-<ul>
-	<li> If you have problems with other add-ons of this kind, maybe this one works for you </li>
-	<li> it's extremely small </li>
-	<li> it loads only stuff it absolutely has to </li>
-	<li> it uses modern APIs and code </li>
-	<li> it can be removed without leaving anything behind </li>
-</ul>
+## Development builds -- ![](https://ci.appveyor.com/api/projects/status/github/NiklasGollenstede/unload-tabs?svg=true)
 
-
-Some of this add-ons code was originally taken from <a href="https://addons.mozilla.org/en-US/firefox/addon/bartab-lite-x">BarTab Lite X</a> (with the authors admission).
+Development builds are automatically created on every commit with [appveyor](https://ci.appveyor.com/project/NiklasGollenstede/unload-tabs/history) and published as [release](https://github.com/NiklasGollenstede/unload-tabs/releases) on GitHub.\
+These build use a different id (`-dev` suffix), so they can / have to be installed parallel to the release versions from AMO; only keep one version installed and active.\
+Dev versions therefore never update to release versions, but they use the browsers build-in update mechanism to automatically update to the latest dev release. Every release version corresponds to the dev version with the same version prefix and the highest build number.

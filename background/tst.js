@@ -18,10 +18,9 @@ async function register() {
 		listeningTypes: [ ],
 		style: `.tab.discarded { opacity: 0.6; }`,
 	}));
-	(await Runtime.sendMessage(TST_ID, {
-		type: 'fake-contextMenu-create',
-		params: menus.unloadTab,
-	}));
+	(await Promise.all(Object.values(menus).map(menu => Runtime.sendMessage(TST_ID, {
+		type: 'fake-contextMenu-create', params: menu,
+	}))));
 }
 
 
@@ -35,6 +34,7 @@ async function onMessageExternal(message, sender) { {
 
 
 return {
+	// the very first tst.enable() has to happen while TST is already running for the initial registration to work
 	enable() {
 		Runtime.onMessageExternal.addListener(onMessageExternal);
 		register().catch(() => null);

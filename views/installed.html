@@ -7,10 +7,10 @@
 	<title>Installed UnloadTabs</title>
 	<style type="text/css">
 		:root {
-			background: #424F5A; filter: invert(1) hue-rotate(180deg);
-			font-family: Segoe UI, Tahoma, sans-serif;
-			padding: 20px;
+			background: #242a31; filter: invert(1) hue-rotate(180deg);
+			font-family: Segoe UI, Tahoma, sans-serif; font-size: 120%;
 		}
+		body { padding: 25px; margin: auto; max-width: 1000px; }
 		h1 * { vertical-align: middle; }
 		h1 img { margin-right: 8px; }
 	</style>
@@ -19,21 +19,21 @@
 
 <h1><img src="/icon.png"><span>UnloadTabs was updated</span></h1>
 
-<p><small> If you just installed UnloadTabs, you know why you see this and can simply close the tab.</small></body></p>
+<p><small><i> If you just installed UnloadTabs, you know why you see this and can simply close the tab.</i></small></p>
 <p>UnloadTabs was disabled last November because Firefox <i>Quantum</i> (57+) disabled support for the kind of add-on it was, without adding the necessary functionality to re-write it.
 Since then, there have been some Firefox updates, which allow UnloadTabs with most of its previous features to be implemented again as a <i>WebExtension</i>.<br>
-So I invested around 20 hours to re-write the entire extension from scratch. I believe that the result now works well enough to be of value to other users again, but there are still some things that don't work:</p><ul>
-	<li>Not-loaded tabs can't be styled. There are no plans to ever allow this in Firefox again. see below for workarounds.</li>
+So I invested around 40 hours to re-write the entire extension from scratch. I believe that the result now works well enough to be of value to other users again, but there are still some things that don't work:</p><ul>
+	<li>Unloaded tabs can't be styled. There are no plans to ever allow this in Firefox again. see below for workarounds.</li>
 	<li>Preventing tabs from loading doesn't always work completely. This is due to the way <i>WebExtensions</i> work. Whey report things (like the closing of a tab) <i>asynchronously</i>, that is, <i>after</i> it already happened. Sometimes (often randomly) that is to late. In these cases, UnloadTabs tries to revert the default actions, but that may not always work entirely:</li><ul>
-		<li>Tabs may loose their icons or display as loading.</li>
+		<li>Tabs may <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1450382">loose their icons</a> or <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1450371">display as loading</a>. These are Firefox bugs. Reloading the tab fixes the problem.</li>
 		<li>Hopefully nothing else.</li>
 	</ul>
-	<li>The shortcuts for circling had to be changed to <code>Alt</code>+<code>PageUp/Down</code> (because only one of <code>Ctrl</code> or <code>Alt</code> can be used and default shortcuts can't be overwritten) and can't be changed (see Firefox <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1303384">bug 1303384</a>).</li>
+	<li>The shortcuts for circling had to be changed to <code>Alt</code>+<code>PageUp/Down</code> (because only one of <code>Ctrl</code> or <code>Alt</code> can be used and default shortcuts can't be overwritten). They can be changed from Firefox 60 onward.</li>
 </ul>
 <p>If you encounter any <b>other</b> problems, please report them as an <a href="https://github.com/NiklasGollenstede/unload-tabs/issues">issue</a> or comment on an existing issue matching your problem. Please don't complain in a rating on the Add-ons download page. I can't respond to those.</p>
 
 
-<h2>Unloaded Tab Style</h2>
+<h2>Unloaded Tabs Style</h2>
 
 <p><i>WebExtensions</i> can't change this part of the browsers appearance anymore. The only way to still do this is by changing (or adding) files in the profile directory on the computers disk, either manually or automatically with the reStyle extension.</p>
 

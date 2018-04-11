@@ -63,8 +63,14 @@ Object.values(menus).forEach(menu => Menus.create(menu));
 options.menus.children.unloadOtherTabs.onChange(([ value, ]) => {
 	menus.unloadOtherTabs.contexts = value.split(' ');
 	Menus.update('unloadOtherTabs', { contexts: value.split(' '), });
+	if (options['intregrate.tst'].value) { tst.disable(); tst.enable(); }
 });
 // could use .onShown and .update(, { enabled, }) .refresh()
+
+
+// Tree Style Tab integration
+options['intregrate.tst'].value && tst.enable();
+options['intregrate.tst'].onChange(([ value, ]) => value ? tst.enable() : tst.disable());
 
 
 // respond to menu click
@@ -234,10 +240,6 @@ function addWrappedListener(api, func) {
 	func.wrapped && api[func.name].removeListener(func.wrapped);
 }*/
 
-
-// Tree Style Tab integration
-tst.enable(); // TODO: add option
-// the very first tst.enable() has to happen while TST is already running for the initial registration to work
 
 module.exports = {
 	menus,
