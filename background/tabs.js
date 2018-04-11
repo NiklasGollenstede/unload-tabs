@@ -44,7 +44,7 @@ async function enable() {
 	(await Tabs.query({ })).forEach(props => {
 		// BUG[FF60]: FF *sometimes* reports never-loaded tabs as not discarded (this is supposed to be fixed, but it does still happen in FF60)
 		if (!props.discarded && props.isArticle === undefined && props.status === 'complete') {
-			debug && console.warn('[BUG] pending tab reported as non-discarded', id);
+			debug && console.warn('[BUG] pending tab reported as non-discarded', props.id);
 			props.discarded = true;
 		}
 		addTab(props);
