@@ -2,7 +2,7 @@
 	"name": "unload-tabs",
 	"version": "0.8.0",
 	"title": "UnloadTabs",
-	"description": "Unload your tabs to free resources",
+	"description": "Unload your tabs to free resources and prevents them from loading unintentionally",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
 	"repository": {

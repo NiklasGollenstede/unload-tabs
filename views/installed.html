@@ -17,14 +17,14 @@
 </head>
 <body>
 
-<h1><img src="/icon.png"><span>UnloadTabs was updated</span></h1>
+<h1><img src="/icon.png"><span>UnloadTabs WebExtension was installed</span></h1>
 
 <p><small><i> If you just installed UnloadTabs, you know why you see this and can simply close the tab.</i></small></p>
 <p>UnloadTabs was disabled last November because Firefox <i>Quantum</i> (57+) disabled support for the kind of add-on it was, without adding the necessary functionality to re-write it.
 Since then, there have been some Firefox updates, which allow UnloadTabs with most of its previous features to be implemented again as a <i>WebExtension</i>.<br>
 So I invested around 40 hours to re-write the entire extension from scratch. I believe that the result now works well enough to be of value to other users again, but there are still some things that don't work:</p><ul>
-	<li>Unloaded tabs can't be styled. There are no plans to ever allow this in Firefox again. see below for workarounds.</li>
-	<li>Preventing tabs from loading doesn't always work completely. This is due to the way <i>WebExtensions</i> work. Whey report things (like the closing of a tab) <i>asynchronously</i>, that is, <i>after</i> it already happened. Sometimes (often randomly) that is to late. In these cases, UnloadTabs tries to revert the default actions, but that may not always work entirely:</li><ul>
+	<li>Unloaded tabs can't be styled. There are no plans to ever allow this in Firefox again. See below for workarounds.</li>
+	<li>Preventing tabs from loading doesn't always work completely. This is due to the way <i>WebExtensions</i> work. They report things (like the closing of a tab) <i>asynchronously</i>, that is, <i>after</i> it already happened. Sometimes (often randomly) that is to late. In these cases, UnloadTabs tries to revert the default actions, but that may not always work entirely:</li><ul>
 		<li>Tabs may <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1450382">loose their icons</a> or <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1450371">display as loading</a>. These are Firefox bugs. Reloading the tab fixes the problem.</li>
 		<li>Hopefully nothing else.</li>
 	</ul>

@@ -119,7 +119,7 @@ async function onCommand(command) { {
 } }
 async function seekNext(direction) {
 	const window = (await Windows.getLastFocused({ windowTypes: [ 'normal', ], populate: !onClose, }));
-	const tabs = (window.tabs || Tabs.query({ windowId: window.id, })).sort((a, b) => a.index - b.index);
+	const tabs = (window.tabs || Tabs.query({ windowId: window.id, discarded: false, hidden: false, })).sort((a, b) => a.index - b.index);
 	const start = tabs.findIndex(_=>_.active); if (start < 0) { return; }
 
 	function find(tab) { return tab && !tab.discarded && !tab.hidden && (alt = tab) || debug2 && void console.log('skipping tab', clone(tab)); }

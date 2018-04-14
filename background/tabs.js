@@ -43,6 +43,7 @@ async function enable() {
 	listeners.forEach(([ event, listener, ]) => event.addListener(listener));
 	(await Tabs.query({ })).forEach(props => {
 		// BUG[FF60]: FF *sometimes* reports never-loaded tabs as not discarded (this is supposed to be fixed, but it does still happen in FF60)
+		// EDIT: does this only happen for pending pinned tabs with browser.sessionstore.restore_pinned_tabs_on_demand?
 		if (!props.discarded && props.isArticle === undefined && props.status === 'complete') {
 			debug && console.warn('[BUG] pending tab reported as non-discarded', props.id);
 			props.discarded = true;

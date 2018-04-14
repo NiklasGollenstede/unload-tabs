@@ -12,7 +12,7 @@ const model = {
 		input: { type: 'boolean', suffix: `prevent Firefox from loading unloaded Tabs.`, },
 		children: {
 			previous: {
-				default: true,
+				default: false,
 				input: { type: 'boolean', prefix: `Instead select<br>`, suffix: `the previous focused Tab,`, },
 			},
 			direction: {
