@@ -15,7 +15,7 @@
 		<li> the shortcut can be changed (in Firefox 60+) </li>
 	</ul></li>
 	<li> compatible with <ul>
-		<li> Tree Style Tab: adds context menus and styles to the sidebar </li>
+		<li> Tree Style Tab: adds context menus and styles to the sidebar (see options) </li>
 		<li> Container Tabs: unloaded tabs stay in the correct container </li>
 		<li> Hidden Tabs (e.g. Tab Groups): works only on currently visible tabs </li>
 	</ul></li>

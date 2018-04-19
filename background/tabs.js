@@ -4,7 +4,7 @@
 	'common/options': options,
 	module,
 }) => { /* global setTimeout, */
-let debug, debug2; options.debug.whenChange(([ value, ]) => { debug = value; debug2 = value >= 2; });
+let debug, debug2, debug3; options.debug.whenChange(([ value, ]) => { debug = value; debug2 = value >= 2; debug3 = value >= 3; });
 
 /**
  * Synchronous cache for Tabs.get/.query()
@@ -90,7 +90,7 @@ function updateTab(tab, change) {
 		else { tab[key] = value; changed = true; }
 	}); if (!changed) { return; }
 
-	debug2 && console.log('fireUpdated', tab.id, change, clone(tab));
+	debug3 && console.log('fireUpdated', tab.id, change, clone(tab));
 	fireUpdated([ tab, change, ]);
 }
 function addTab({ id, discarded, active, hidden, status, windowId, index, pinned, }) {
@@ -130,9 +130,9 @@ function moveTab(id, from, to) {
 	const tab = tabs.get(id); updateTab(tab, { index: to, });
 	const move = query({ windowId: tab.windowId, });
 	if (from < to) {
-		move.forEach(tab => tab.index > from && tab.index <= to && updateTab(tab, { index: tab.index - 1, }));
+		move.forEach(tab => tab.index > from && tab.index < to && updateTab(tab, { index: tab.index - 1, }));
 	} else {
-		move.forEach(tab => tab.index < from && tab.index >= to && updateTab(tab, { index: tab.index + 1, }));
+		move.forEach(tab => tab.index < from && tab.index > to && updateTab(tab, { index: tab.index + 1, }));
 	}
 }
 

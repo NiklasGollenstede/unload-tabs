@@ -83,8 +83,8 @@ const model = {
 		expanded: false,
 		default: +isBeta,
 	//	hidden: !isBeta,
-		restrict: { type: 'number', from: 0, to: 2, match: { exp: /^\d$/, message: 'This value must be an integer', }, },
-		input: { type: 'number', suffix: `set 0 to disable, 1 for some, 2 for a lot of diagnostic logging`, },
+		restrict: { type: 'number', from: 0, to: 3, match: { exp: /^\d$/, message: 'This value must be an integer', }, },
+		input: { type: 'number', suffix: `Set 0 to disable, 1 for some, 2 for a lot of diagnostic logging. 3 is just ridiculous.`, },
 	},
 };
 
