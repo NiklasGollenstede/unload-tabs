@@ -103,7 +103,7 @@ function addTab({ id, discarded, active, hidden, status, windowId, index, pinned
 	debug2 && console.log('fireCreated', id, clone(tab));
 	fireCreated([ tab, ]);
 
-	query({ windowId, }).forEach(tab => tab.index >= index && updateTab(tab, { index: tab.index + 1, }));
+	query({ windowId, }).forEach(it => it.index >= index && it !== tab && updateTab(it, { index: it.index + 1, }));
 }
 
 
