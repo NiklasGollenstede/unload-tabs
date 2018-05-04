@@ -92,9 +92,15 @@ async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { s
 		);
 	} break;
 	case 'unloadOtherTabs': {
-		(await Tabs.discard((await Tabs.queryAsync({
+		try { (await Tabs.discard((await Tabs.queryAsync({
 			discarded: false, windowId, pinned: pinned ? undefined : false,
-		})).filter(_=>_.id !== id).map(_=>_.id)));
+		})).filter(_=>_.id !== id).map(_=>_.id))); }
+		catch (error) { // not sure when and why this can happen
+			const match = (/^Invalid tab ID: (\d+)$/).exec(error && error.message);
+			if (!match || !Tabs.delete(+match[1])) { throw error; }
+			debug && console.wran(`[BUG] .onRemoved for tab ${match[1]} was never fired`);
+			onClicked.apply(null, arguments);
+		}
 	} break;
 } }
 // BUG[FF60]: tab will report as loading and non-discarded directly after discarding,

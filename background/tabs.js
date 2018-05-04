@@ -22,12 +22,14 @@ const exports = module.exports = {
 	setEnabled(bool) { bool ? enable() : disable(); },
 	// inherits Map methods (including synchronous get)
 	__proto__: new Map,
+	delete(id) { return tabs.delete(id); },
 }; void find;
 const fireCreated = setEvent(exports, 'onCreated', { lazy: false, });
 const fireUpdated = setEvent(exports, 'onUpdated', { lazy: false, });
 const fireRemoved = setEvent(exports, 'onRemoved', { lazy: false, });
 
 /// implementation
+
 
 // cache
 const tabs = Object.getPrototypeOf(exports); // new Map/*<id,{ id, discarded, active, hidden, status, windowId, index, pinned, }>*/;
@@ -66,10 +68,6 @@ listen(Tabs.onCreated, function (props) {
 });
 listen(Tabs.onUpdated, function (id, change, props) {
 	debug2 && console.log('onUpdated', ...arguments);
-
-	// BUG[FF60]: When loading unloaded tab, the favIconUrl is restored, but that is not always reported properly.
-	// ('status' in change) && ('favIconUrl' in props) && Tabs.get(id).favIconUrl !== props.favIconUrl && (change.favIconUrl = props.favIconUrl); // don't need it
-
 	addOrUpdateTab(id, change, props);
 });
 function addOrUpdateTab(id, change, props) {
@@ -80,6 +78,12 @@ function addOrUpdateTab(id, change, props) {
 		// if there was an early update, it's index may have been wrong,
 		// so explicitly move the tab to fix the .index of shifted tabs
 		if (change === props && tab.index !== change.index) { moveTab(tab.id, tab.index, change.index); }
+
+		else if (tab.index !== props.index) { // TODO: the `.index` update logic doesn't work correctly
+			debug && console.error(`unexpected .index change for tab ${id}: ${tab.index} ==> ${props.index}`);
+			change.index = props.index; // temporary fix for that
+		}
+
 		updateTab(tab, change); // apply whatever else might have changed
 		// TODO: which information would actually be correct, the early update or the late crate?
 	} else { addTab(props); }
@@ -99,6 +103,7 @@ function addTab({ id, discarded, active, hidden, status, windowId, index, pinned
 		status, windowId: +windowId, index: +index, pinned: pinned || false, __proto__: null,
 		restoring: false, // custom
 	}; tabs.set(id, tab);
+	Object.defineProperty(tab, 'id', { configurable: false, writable: false, }); // `.id` must never change
 
 	debug2 && console.log('fireCreated', id, clone(tab));
 	fireCreated([ tab, ]);
@@ -150,7 +155,7 @@ listen(Tabs.onAttached, function (id, { newWindowId, newPosition: newIndex, }) {
 // closed
 listen(Tabs.onRemoved, function (id, { isWindowClosing, }) { setTimeout(() => {
 	debug2 && console.log('onRemoved', ...arguments);
-	const tab = tabs.get(id), { windowId, index, active, } = tab; tabs.delete(id);
+	const tab = tabs.get(id); tabs.delete(id); const { windowId, index, active, } = tab;
 
 	debug2 && console.log('fireRemoved', id, clone(tab));
 	fireRemoved([ tab, { isWindowClosing, }, ]);
@@ -163,9 +168,9 @@ listen(Tabs.onRemoved, function (id, { isWindowClosing, }) { setTimeout(() => {
 // get the first or all tabs that match the criteria
 function queryOrFind(one, query) {
 	ensureEnabled();
-	query = Object.entries(query);
-	const res = [ ]; for (const [ , tab, ] of tabs) {
-		if (query.every(([ key, value, ]) => value === undefined || tab[key] === value)) {
+	const props = Object.entries(query).filter(_=>_[1] !== undefined);
+	const res = [ ]; for (const { 1: tab, } of tabs) {
+		if (props.every(({ 0: key, 1: value, }) => tab[key] === value)) {
 			if (one) { return tab; } else { res.push(tab); }
 		}
 	} return one ? null : res;
