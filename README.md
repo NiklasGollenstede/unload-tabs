@@ -1,5 +1,5 @@
 
-# Unload Tabs <sub><a href="https://addons.mozilla.org/firefox/addon/unloadtabs/"><img src="https://addons.cdn.mozilla.net/static/img/addons-buttons/AMO-button_1.png" width="86" height="30" style="vertical-align:middle"></a><sub>
+# Unload Tabs <sub><a href="https://addons.mozilla.org/firefox/addon/unload-tabs/"><img src="./images/get-ff-ext.png" width="86" height="30" style="vertical-align:middle"></a><sub>
 
 ## Description
 <!-- this HTML can be copied as the AMO description -->
