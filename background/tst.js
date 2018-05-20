@@ -28,8 +28,8 @@ async function onMessageExternal(message, sender) { {
 	debug && console.log('onMessageExternal', ...arguments);
 	if (sender.id !== TST_ID) { return; }
 } try { switch (message.type) {
-	case 'ready': (await register()); break;
-	case 'fake-contextMenu-click': (await onClicked(message.info, message.tab));
+	case 'ready': (register()); return true;
+	case 'fake-contextMenu-click': (onClicked(message.info, message.tab));
 } } catch (error) { console.error('TST error', error); } }
 
 
@@ -41,7 +41,7 @@ return {
 	},
 	disable() {
 		Runtime.onMessageExternal.removeListener(onMessageExternal);
-		Runtime.sendMessage(TST_ID, { type: 'unregister-self', }).catch(() => null);
+		Runtime.sendMessage(TST_ID, { type: 'fake-contextMenu-remove-all' }).then(() => Runtime.sendMessage(TST_ID, { type: 'unregister-self', })).catch(() => null);
 	},
 };
 
