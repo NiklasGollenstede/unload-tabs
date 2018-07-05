@@ -1,5 +1,5 @@
 
-# Unload Tabs <sub><a href="https://addons.mozilla.org/firefox/addon/unload-tabs/"><img src="./images/get-ff-ext.png" width="86" height="30" style="vertical-align:middle"></a><sub>
+# Unload Tabs <sub><a href="https://addons.mozilla.org/firefox/addon/unload-tabs/"><img src="./images/get-ff-ext.png" width="86" height="30"></a></sub>
 
 ## Description
 <!-- this HTML can be copied as the AMO description -->
@@ -37,10 +37,10 @@ If you encounter any <b>other</b> problems, please report them as an <a href="ht
 
 ## Development builds -- ![](https://ci.appveyor.com/api/projects/status/github/NiklasGollenstede/unload-tabs?svg=true)
 
-Development builds are automatically created on every commit with [appveyor](https://ci.appveyor.com/project/NiklasGollenstede/unload-tabs/history) and published as [release](https://github.com/NiklasGollenstede/epub-creator/releases) on GitHub.\
-These build use a different id (`-dev` suffix), so they are installed as additional extension and do not replace the release version. This means that:
- * you probably want to disable the release version, while the development version is active
- * any options set are managed individually (which also means that pre-release versions can't mess with your settings)
+Development builds are automatically created on every commit with [appveyor](https://ci.appveyor.com/project/NiklasGollenstede/unload-tabs/history) and [released](https://github.com/NiklasGollenstede/epub-creator/releases) on GitHub.\
+These builds use a different id (`-dev` suffix), so they are installed as additional extension and do not replace the release version. This means that:
+ * you probably want to disable the release version while the development version is active
+ * any options set are managed individually (so pre-release versions can't mess with your settings)
  * they never update to release versions, but
     * they update themselves to the latest development version
     * every release version has a corresponding development version (the one with the same prefix and highest build number)

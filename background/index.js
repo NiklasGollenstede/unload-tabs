@@ -1,6 +1,6 @@
 (function(global) { 'use strict'; define(async ({ // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 	'node_modules/web-ext-utils/browser/': { Menus, Commands, Windows, Tabs: _Tabs, },
-	'node_modules/web-ext-utils/utils/': { reportError, /*reportSuccess,*/ },
+	'node_modules/web-ext-utils/utils/notify': notify,
 	'node_modules/web-ext-utils/update/': updated,
 	'common/options': options,
 	Tabs, tst,
@@ -81,12 +81,12 @@ async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { s
 			const tabs = (await Tabs.queryAsync({ windowId, })), i = tabs.findIndex(_=>_.active);
 			const alt = findNext(tabs[i], tabs) || !onClose && (tabs[i + 1] || tabs[i - 1]);
 			if (alt) { (await Tabs.update(alt.id, { active: true, })); }
-			else { reportError('Not unloading', 'No Tab to switch to'); return; }
+			else { notify.info('Not unloading', 'No Tab to switch to'); return; }
 		}
 		discarding = id; setTimeout(() => discarding === id && (discarding = null), 500);
 		(await Tabs.discard(id));
 		(await sleep(1000));
-		!(await Tabs.getAsync(id)).discarded && reportError(
+		!(await Tabs.getAsync(id)).discarded && notify.warn(
 			'Failed to unload tab',
 			`Some browser UI tabs and tabs with prompts on close can't be unloaded.`,
 		);
@@ -240,7 +240,7 @@ function clone(arg) {
 function addWrappedListener(api, func) {
 	api[func.name].addListener(func.wrapped || (func.wrapped = async function() { try {
 		(await func.apply(this, arguments));
-	} catch (error) { reportError(`Failed to handle ${func.name}`, error); } }));
+	} catch (error) { notify.error(`Failed to handle ${func.name}`, error); } }));
 }
 /*function removeWrappedListener(api, func) {
 	func.wrapped && api[func.name].removeListener(func.wrapped);

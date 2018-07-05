@@ -10,12 +10,14 @@
 		"url": "https://github.com/NiklasGollenstede/unload-tabs"
 	},
 	"dependencies": {
-		"web-ext-build": "0.0.8",
-		"web-ext-utils": "0.0.18"
+		"multiport": "0.2.3",
+		"pbq": "0.3.3",
+		"web-ext-build": "0.0.9",
+		"web-ext-utils": "0.1.4"
 	},
 	"devDependencies": {
-		"babel-eslint": "7.1.1",
-		"eslint": "3.14.1",
+		"babel-eslint": "8.2.2",
+		"eslint": "4.19.1",
 		"eslintrc": "NiklasGollenstede/eslintrc#3872881"
 	},
 	"scripts": {

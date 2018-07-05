@@ -35,11 +35,10 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 	);
 
 	files.node_modules = [
+		'pbq/require.js',
 		'web-ext-utils/browser/index.js',
 		'web-ext-utils/browser/storage.js',
 		'web-ext-utils/browser/version.js',
-		'web-ext-utils/lib/multiport/index.js',
-		'web-ext-utils/lib/pbq/require.js',
 		'web-ext-utils/loader/_background.html',
 		'web-ext-utils/loader/_background.js',
 		'web-ext-utils/loader/_view.html',
@@ -56,7 +55,7 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 		'web-ext-utils/utils/icons/',
 		'web-ext-utils/utils/event.js',
 		'web-ext-utils/utils/files.js',
-		'web-ext-utils/utils/index.js',
+		'web-ext-utils/utils/notify.js',
 		'web-ext-utils/utils/semver.js',
 	];
 };

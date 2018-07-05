@@ -9,6 +9,7 @@ let onClicked, menus; require([ './', ], index => ({ onClicked, menus, } = index
 
 const TST_ID = 'treestyletab@piro.sakura.ne.jp';
 
+const onError = console.error.bind(console, 'TST error');
 
 async function register() {
 	(await Runtime.sendMessage(TST_ID, {
@@ -16,7 +17,7 @@ async function register() {
 		name: manifest.name,
 		icons: manifest.icons,
 		listeningTypes: [ ],
-		style: `.tab.discarded { opacity: 0.6; }`,
+		style: options['intregrate.tst'].children.style.value,
 	}));
 	(await Promise.all(Object.values(menus).map(menu => Runtime.sendMessage(TST_ID, {
 		type: 'fake-contextMenu-create', params: menu,
@@ -26,22 +27,25 @@ async function register() {
 
 async function onMessageExternal(message, sender) { {
 	debug && console.log('onMessageExternal', ...arguments);
-	if (sender.id !== TST_ID) { return; }
+	if (sender.id !== TST_ID) { return false; }
 } try { switch (message.type) {
-	case 'ready': (register()); return true;
-	case 'fake-contextMenu-click': (onClicked(message.info, message.tab));
-} } catch (error) { console.error('TST error', error); } }
+	case 'ready': register().catch(onError); break;
+	case 'fake-contextMenu-click': onClicked(message.info, message.tab);
+} } catch (error) { console.error('TST error', error); } {
+	return true; // indicate to TST that the event was handled
+} }
 
 
 return {
 	// the very first tst.enable() has to happen while TST is already running for the initial registration to work
 	enable() {
 		Runtime.onMessageExternal.addListener(onMessageExternal);
-		register().catch(() => null);
+		register().catch(() => null); // may very well not be ready yet
 	},
 	disable() {
 		Runtime.onMessageExternal.removeListener(onMessageExternal);
-		Runtime.sendMessage(TST_ID, { type: 'fake-contextMenu-remove-all' }).then(() => Runtime.sendMessage(TST_ID, { type: 'unregister-self', })).catch(() => null);
+		Runtime.sendMessage(TST_ID, { type: 'fake-contextMenu-remove-all', })
+		.then(() => Runtime.sendMessage(TST_ID, { type: 'unregister-self', })).catch(onError);
 	},
 };
 

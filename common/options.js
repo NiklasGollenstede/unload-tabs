@@ -77,6 +77,9 @@ const model = {
 		<br>Please re-enable if the integration fails.`,
 		default: false,
 		input: { type: 'boolean', suffix: `Dim unloaded Tabs and add context menu options.`, },
+		children: {
+			style: { default: `.tab.discarded { opacity: 0.6; }`, },
+		},
 	},
 	debug: {
 		title: 'Debug log verbosity',
