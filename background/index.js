@@ -58,13 +58,20 @@ const menus = {
 		icons: { 32: 'many.png', },
 		contexts: options.menus.children.unloadOtherTabs.value.split(' '),
 	},
+	unloadAllTabs: {
+		title: 'Unload in All Windows',
+		id: 'unloadAllTabs',
+		contexts: options.menus.children.unloadAllTabs.value.split(' '),
+	},
 };
 Object.values(menus).forEach(menu => Menus.create(menu));
-options.menus.children.unloadOtherTabs.onChange(([ value, ]) => {
-	menus.unloadOtherTabs.contexts = value.split(' ');
-	Menus.update('unloadOtherTabs', { contexts: value.split(' '), });
+options.menus.children.unloadOtherTabs.onChange(updateMenu);
+options.menus.children.unloadAllTabs.onChange(updateMenu);
+function updateMenu([ value, ], _, { name, }) {
+	menus[name].contexts = value.split(' ');
+	Menus.update(name, { contexts: value.split(' '), });
 	if (options['intregrate.tst'].value) { tst.disable(); tst.enable(); }
-});
+}
 // could use .onShown and .update(, { enabled, }) .refresh()
 
 
@@ -91,9 +98,10 @@ async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { s
 			`Some browser UI tabs and tabs with prompts on close can't be unloaded.`,
 		);
 	} break;
-	case 'unloadOtherTabs': {
+	case 'unloadOtherTabs': case 'unloadAllTabs': {
+		const all = menuItemId === 'unloadAllTabs';
 		try { (await Tabs.discard((await Tabs.queryAsync({
-			discarded: false, windowId, pinned: pinned ? undefined : false,
+			discarded: false, windowId: all ? undefined : windowId, pinned: all || pinned ? undefined : false,
 		})).filter(_=>_.id !== id).map(_=>_.id))); }
 		catch (error) { // not sure when and why this can happen
 			const match = (/^Invalid tab ID: (\d+)$/).exec(error && error.message);

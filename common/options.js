@@ -44,6 +44,14 @@ const model = {
 					{ value: 'tab tools_menu', label: `also in the Tab context menu`, },
 				], prefix: `Show <b>Unload Other Tabs</b>`, },
 			},
+			unloadAllTabs: {
+				default: 'tools_menu',
+				restrict: { type: 'string', },
+				input: { type: 'menulist', options: [
+					{ value: 'tools_menu', label: `only in the Tools menu`, },
+					{ value: 'tab tools_menu', label: `also in the Tab context menu`, },
+				], prefix: `Show <b>Unload in All Windows</b>`, },
+			},
 		},
 	},
 	commands: {
