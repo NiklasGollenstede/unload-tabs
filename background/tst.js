@@ -9,6 +9,12 @@ let onClicked, menus; require([ './', ], index => ({ onClicked, menus, } = index
 
 const TST_ID = 'treestyletab@piro.sakura.ne.jp';
 
+const unloadTreeMenu = {
+	id: 'unloadTree',
+	title: 'Unload Tree',
+	contexts: 'tabs',
+};
+
 const onError = console.error.bind(console, 'TST error');
 
 async function register() {
@@ -22,6 +28,9 @@ async function register() {
 	(await Promise.all(Object.values(menus).map(menu => Runtime.sendMessage(TST_ID, {
 		type: 'fake-contextMenu-create', params: menu,
 	}))));
+	(await Runtime.sendMessage(TST_ID, {
+		type: 'fake-contextMenu-create', params: unloadTreeMenu,
+	}));
 }
 
 
@@ -46,6 +55,12 @@ return {
 		Runtime.onMessageExternal.removeListener(onMessageExternal);
 		Runtime.sendMessage(TST_ID, { type: 'fake-contextMenu-remove-all', })
 		.then(() => Runtime.sendMessage(TST_ID, { type: 'unregister-self', })).catch(onError);
+	},
+	async getChildren(tabId) {
+		const tree = (await Runtime.sendMessage(TST_ID, { type: 'get-tree', tab: tabId, }));
+		const tabs = [ ]; (function flatten(tree) {
+			tabs.push(tree); tree.children.forEach(flatten);
+		})(tree); return tabs;
 	},
 };
 

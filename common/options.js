@@ -39,18 +39,18 @@ const model = {
 			unloadOtherTabs: {
 				default: 'tab tools_menu',
 				restrict: { type: 'string', },
-				input: { type: 'menulist', options: [
+				input: { type: 'menulist', prefix: `Show <b>Unload Other Tabs</b>`, options: [
 					{ value: 'tools_menu', label: `only in the Tools menu`, },
 					{ value: 'tab tools_menu', label: `also in the Tab context menu`, },
-				], prefix: `Show <b>Unload Other Tabs</b>`, },
+				], },
 			},
 			unloadAllTabs: {
 				default: 'tools_menu',
 				restrict: { type: 'string', },
-				input: { type: 'menulist', options: [
+				input: { type: 'menulist', prefix: `Show <b>Unload in All Windows</b>`, options: [
 					{ value: 'tools_menu', label: `only in the Tools menu`, },
 					{ value: 'tab tools_menu', label: `also in the Tab context menu`, },
-				], prefix: `Show <b>Unload in All Windows</b>`, },
+				], },
 			},
 		},
 	},
@@ -86,7 +86,7 @@ const model = {
 		default: false,
 		input: { type: 'boolean', suffix: `Dim unloaded Tabs and add context menu options.`, },
 		children: {
-			style: { default: `.tab.discarded { opacity: 0.6; }`, },
+			style: { hidden: true, default: `.tab.discarded { opacity: 0.6; }`, },
 		},
 	},
 	debug: {

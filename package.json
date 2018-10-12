@@ -1,6 +1,6 @@
 {
 	"name": "unload-tabs",
-	"version": "0.8.3",
+	"version": "0.8.4",
 	"title": "UnloadTabs",
 	"description": "Unload your tabs to free resources and prevents them from loading unintentionally",
 	"author": "Niklas Gollenstede",
@@ -11,9 +11,9 @@
 	},
 	"dependencies": {
 		"multiport": "0.2.3",
-		"pbq": "0.3.3",
-		"web-ext-build": "0.0.9",
-		"web-ext-utils": "0.1.6"
+		"pbq": "0.3.5",
+		"web-ext-build": "0.0.10",
+		"web-ext-utils": "0.1.8"
 	},
 	"devDependencies": {
 		"babel-eslint": "9.0.0",

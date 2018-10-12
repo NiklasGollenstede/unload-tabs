@@ -48,22 +48,19 @@ let onClose = false; options.onClose.whenChange(([ value, ]) => {
 const menus = {
 	unloadTab: {
 		title: 'Unload Tab',
-		id: 'unloadTab',
 		icons: { 64: 'icon.png', },
 		contexts: [ 'tab', 'tools_menu', ],
 	},
 	unloadOtherTabs: {
 		title: 'Unload Other Tabs',
-		id: 'unloadOtherTabs',
 		icons: { 32: 'many.png', },
 		contexts: options.menus.children.unloadOtherTabs.value.split(' '),
 	},
 	unloadAllTabs: {
 		title: 'Unload in All Windows',
-		id: 'unloadAllTabs',
 		contexts: options.menus.children.unloadAllTabs.value.split(' '),
 	},
-};
+}; Object.keys(menus).forEach(id => (menus[id].id = id));
 Object.values(menus).forEach(menu => Menus.create(menu));
 options.menus.children.unloadOtherTabs.onChange(updateMenu);
 options.menus.children.unloadAllTabs.onChange(updateMenu);
@@ -98,19 +95,25 @@ async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { s
 			`Some browser UI tabs and tabs with prompts on close can't be unloaded.`,
 		);
 	} break;
-	case 'unloadOtherTabs': case 'unloadAllTabs': {
-		const all = menuItemId === 'unloadAllTabs';
-		try { (await Tabs.discard((await Tabs.queryAsync({
-			discarded: false, windowId: all ? undefined : windowId, pinned: all || pinned ? undefined : false,
-		})).filter(_=>_.id !== id).map(_=>_.id))); }
-		catch (error) { // not sure when and why this can happen
-			const match = (/^Invalid tab ID: (\d+)$/).exec(error && error.message);
-			if (!match || !Tabs.delete(+match[1])) { throw error; }
-			debug && console.wran(`[BUG] .onRemoved for tab ${match[1]} was never fired`);
-			onClicked.apply(null, arguments);
-		}
+	case 'unloadOtherTabs': {
+		unload((await Tabs.queryAsync({
+			discarded: false, windowId, pinned: pinned ? undefined : false,
+		})).filter(_=>_.id !== id));
 	} break;
-} }
+	case 'unloadAllTabs': {
+		unload((await Tabs.queryAsync({
+			discarded: false,
+		})));
+	} break;
+	case 'unloadTree': {
+		unload((await tst.getChildren(id)));
+	} break;
+} function unload(tabs) { Tabs.discard(tabs.map(_=>_.id)).catch(error => { // not sure when and why this can happen
+	const match = (/^Invalid tab ID: (\d+)$/).exec(error && error.message);
+	if (!match || !Tabs.delete(+match[1])) { throw error; }
+	debug && console.wran(`[BUG] .onRemoved for tab ${match[1]} was never fired`);
+	onClicked.apply(null, arguments);
+}); } }
 // BUG[FF60]: tab will report as loading and non-discarded directly after discarding,
 // but that doesn't reflect in the UI. Discarding it again fixes the tab state
 let discarding = null; addWrappedListener(_Tabs, function onUpdated(id, change) {
