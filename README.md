@@ -26,7 +26,7 @@
 </ul>
 
 <b>BUGS</b>:
-Firefox currently suffers from a number of bugs related to unloading tabs. Most notably, tabs may <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1450382">loose their icons</a> or <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1450371">display as loading</a>. Fixing that is Mozillas job.
+Firefox currently suffers from a number of bugs related to unloading tabs. Most notably, tabs may <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1450382">lose their icons</a> or <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1450371">display as loading</a>. Fixing that is Mozilla's job.
 If you encounter any <b>other</b> problems, please report them as an <a href="https://github.com/NiklasGollenstede/unload-tabs/issues">issue</a> or comment on an existing issue matching your problem. Please don't complain in a rating on the Add-ons download page. I can't respond to those.
 
 <b>Permissions used</b>:<ul>
@@ -38,7 +38,7 @@ If you encounter any <b>other</b> problems, please report them as an <a href="ht
 ## Development builds -- ![](https://ci.appveyor.com/api/projects/status/github/NiklasGollenstede/unload-tabs?svg=true)
 
 Development builds are automatically created on every commit with [appveyor](https://ci.appveyor.com/project/NiklasGollenstede/unload-tabs/history) and [released](https://github.com/NiklasGollenstede/epub-creator/releases) on GitHub.\
-These builds use a different id (`-dev` suffix), so they are installed as additional extension and do not replace the release version. This means that:
+These builds use a different id (`-dev` suffix), so they are installed as an additional extension and do not replace the release version. This means that:
  * you probably want to disable the release version while the development version is active
  * any options set are managed individually (so pre-release versions can't mess with your settings)
  * they never update to release versions, but
