@@ -1,6 +1,7 @@
 (function(global) { 'use strict'; define(async ({ // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 	'node_modules/web-ext-utils/browser/': { Runtime, },
 	'node_modules/web-ext-utils/browser/': { manifest, },
+	'node_modules/web-ext-utils/browser/': { Menus, },
 	'common/options': options,
 	require,
 }) => {
@@ -12,7 +13,8 @@ const TST_ID = 'treestyletab@piro.sakura.ne.jp';
 const unloadTreeMenu = {
 	id: 'unloadTree',
 	title: 'Unload Tree',
-	contexts: 'tabs',
+	contexts: [ 'tab', ],
+	viewTypes: [ 'sidebar', ],
 };
 
 const onError = console.error.bind(console, 'TST error');
@@ -25,6 +27,7 @@ async function register() {
 		listeningTypes: [ ],
 		style: options['intregrate.tst'].children.style.value,
 	}));
+	try { Menus.create(unloadTreeMenu); } catch(error) { console.error('TST error on register', error); }
 	(await Promise.all(Object.values(menus).map(menu => Runtime.sendMessage(TST_ID, {
 		type: 'fake-contextMenu-create', params: menu,
 	}))));
