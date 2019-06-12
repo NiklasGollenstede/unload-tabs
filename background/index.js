@@ -67,7 +67,6 @@ options.menus.children.unloadAllTabs.onChange(updateMenu);
 function updateMenu([ value, ], _, { name, }) {
 	menus[name].contexts = value.split(' ');
 	Menus.update(name, { contexts: value.split(' '), });
-	if (options['intregrate.tst'].value) { tst.disable(); tst.enable(); }
 }
 // could use .onShown and .update(, { enabled, }) .refresh()
 

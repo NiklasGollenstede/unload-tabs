@@ -1,7 +1,5 @@
 (function(global) { 'use strict'; define(async ({ // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
-	'node_modules/web-ext-utils/browser/': { Runtime, },
-	'node_modules/web-ext-utils/browser/': { manifest, },
-	'node_modules/web-ext-utils/browser/': { Menus, },
+	'node_modules/web-ext-utils/browser/': { manifest, Runtime, Menus, },
 	'common/options': options,
 	require,
 }) => {
@@ -27,7 +25,6 @@ async function register() {
 		listeningTypes: [ ],
 		style: options['intregrate.tst'].children.style.value,
 	}));
-	try { Menus.create(unloadTreeMenu); } catch(error) { console.error('TST error on register', error); }
 	(await Promise.all(Object.values(menus).map(menu => Runtime.sendMessage(TST_ID, {
 		type: 'fake-contextMenu-create', params: menu,
 	}))));
@@ -35,7 +32,6 @@ async function register() {
 		type: 'fake-contextMenu-create', params: unloadTreeMenu,
 	}));
 }
-
 
 async function onMessageExternal(message, sender) { {
 	debug && console.log('onMessageExternal', ...arguments);
@@ -47,17 +43,28 @@ async function onMessageExternal(message, sender) { {
 	return true; // indicate to TST that the event was handled
 } }
 
+function updateMenu([ value, ], _, { name, }) {
+	Runtime.sendMessage(TST_ID, {
+		type: 'fake-contextMenu-update', params: [ name, { contexts: value.split(' '), }, ],
+	}).catch(onError);
+}
 
 return {
 	// the very first tst.enable() has to happen while TST is already running for the initial registration to work
+	// also, this is somewhat racy: calling disable() and enable() before the other one was done can lead to unexpected states
 	enable() {
 		Runtime.onMessageExternal.addListener(onMessageExternal);
+		options.menus.children.unloadOtherTabs.onChange.addListener(updateMenu);
+		options.menus.children.unloadAllTabs.onChange.addListener(updateMenu);
 		register().catch(() => null); // may very well not be ready yet
+		Menus.create(unloadTreeMenu, () => Runtime.lastError && console.error('TST error (create native menu)', Runtime.lastError)); // (why doesn't this return a promise?!)
 	},
 	disable() {
 		Runtime.onMessageExternal.removeListener(onMessageExternal);
-		Runtime.sendMessage(TST_ID, { type: 'fake-contextMenu-remove-all', })
-		.then(() => Runtime.sendMessage(TST_ID, { type: 'unregister-self', })).catch(onError);
+		options.menus.children.unloadOtherTabs.onChange.removeListener(updateMenu);
+		options.menus.children.unloadAllTabs.onChange.removeListener(updateMenu);
+		Runtime.sendMessage(TST_ID, { type: 'unregister-self', }).catch(onError);
+		Menus.remove(unloadTreeMenu.id).catch(error => console.error('TST error (remove native menu)', error));
 	},
 	async getChildren(tabId) {
 		const tree = (await Runtime.sendMessage(TST_ID, { type: 'get-tree', tab: tabId, }));
