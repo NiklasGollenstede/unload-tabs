@@ -18,15 +18,21 @@ module.exports = function({ options, /*packageJson,*/ manifestJson, files, }) {
 		unloadSelectedTab: {
 			suggested_key: { },
 			description: 'Unload the current tab',
-		}, unloadSelectedTab_1: { },
+		}, unloadSelectedTab_1: {
+			description: 'Unload the current tab (alternative)',
+		},
 		prevLoadedTab: {
 			suggested_key: { default: 'Alt+PageUp',	},
 			description: 'Switch to the previous loaded Tab',
-		}, prevLoadedTab_1: { },
+		}, prevLoadedTab_1: {
+			description: 'Switch to the previous loaded Tab (alternative)',
+		},
 		nextLoadedTab: {
-			suggested_key: { default: 'Alt+PageDown',	},
+			suggested_key: { default: 'Alt+PageDown', },
 			description: 'Switch to the next loaded Tab',
-		}, nextLoadedTab_1: { },
+		}, nextLoadedTab_1: {
+			description: 'Switch to the next loaded Tab (alternative)',
+		},
 	};
 
 	files['.'].push(

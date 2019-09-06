@@ -80,7 +80,7 @@ const model = {
 		},
 	},
 	'intregrate.tst': {
-		title: 'Integrate with Tree Style Tabs [ᴇxᴘᴇʀɪᴍᴇɴᴛᴀʟ]',
+		title: 'Integrate with Tree Style Tabs',
 		description: `Only effective if Tree Style Tabs is already installed and activated.
 		<br>Please re-enable if the integration fails.`,
 		default: false,

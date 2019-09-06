@@ -12,6 +12,7 @@
  */
 
 @-moz-document
+    url(chrome://browser/content/browser.xhtml),
     url(chrome://browser/content/browser.xul)
 {
     tab[pending], #alltabs-popup menuitem[pending]

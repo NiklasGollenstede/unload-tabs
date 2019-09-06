@@ -1,6 +1,6 @@
 {
 	"name": "unload-tabs",
-	"version": "0.8.4",
+	"version": "0.8.5",
 	"title": "UnloadTabs",
 	"description": "Unload your tabs to free resources and prevents them from loading unintentionally",
 	"author": "Niklas Gollenstede",
