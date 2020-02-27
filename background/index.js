@@ -79,46 +79,55 @@ options['intregrate.tst'].onChange(([ value, ]) => value ? tst.enable() : tst.di
 // respond to menu click
 addWrappedListener(Menus, onClicked);
 async function onClicked({ menuItemId, }, { id, active, windowId, pinned, highlighted, }) {
-	const ids = highlighted ? (await Tabs.queryAsync({ windowId, highlighted, })).map(_=>_.id) : [id,];
+	const ids = highlighted ? (await Tabs.queryAsync({ windowId, highlighted, })).map(_=>_.id) : [ id, ];
+
+	// Bug. Not sure when, why and whether still this happens
+	const unload = tabs => { Tabs.discard(tabs.map(_=>_.id)).catch(error => {
+		const match = (/^Invalid tab ID: (\d+)$/).exec(error && error.message);
+		if (!match || !Tabs.delete(+match[1])) { throw error; }
+		debug && console.wran(`[BUG] .onRemoved for tab ${match[1]} was never fired`);
+		onClicked.apply(null, arguments); // `unload` must not have its own `arguments`
+	}); };
+
 	switch (menuItemId) {
-	case 'unloadTab': {
-		if (active || ids.length > 1) {
-			const tabs = (await Tabs.queryAsync({ windowId, })).filter(_=>_.active || !ids.includes(_.id)), i = tabs.findIndex(_=>_.active);
-			const alt = findNext(tabs[i], tabs) || !onClose && (tabs[i + 1] || tabs[i - 1]);
-			if (alt) { (await Tabs.update(alt.id, { active: true, })); }
-			else { notify.info('Not unloading', 'No Tab to switch to'); return; }
-		}
-		discarding = ids; setTimeout(() => discarding === ids && (discarding = null), 500);
-		(await Tabs.discard(ids));
-		(await sleep(1000));
-		(await Promise.all(ids.map(id=>Tabs.getAsync(id)))).some(_=>!_.discarded) && notify.warn(
-			'Failed to unload tab',
-			`Some browser UI tabs and tabs with prompts on close can't be unloaded.`,
-		);
-	} break;
-	case 'unloadOtherTabs': {
-		unload((await Tabs.queryAsync({
-			discarded: false, windowId, pinned: pinned ? undefined : false,
-		})).filter(_=>_.id !== id && !ids.includes(_.id)));
-	} break;
-	case 'unloadAllTabs': {
-		unload((await Tabs.queryAsync({
-			discarded: false,
-		})));
-	} break;
-	case 'unloadTree': {
-		unload((await Promise.all(ids.map(id=>tst.getChildren(id)))).flat());
-	} break;
-} function unload(tabs) { Tabs.discard(tabs.map(_=>_.id)).catch(error => { // not sure when and why this can happen
-	const match = (/^Invalid tab ID: (\d+)$/).exec(error && error.message);
-	if (!match || !Tabs.delete(+match[1])) { throw error; }
-	debug && console.wran(`[BUG] .onRemoved for tab ${match[1]} was never fired`);
-	onClicked.apply(null, arguments);
-}); } }
+		case 'unloadTab': {
+			if (active || ids.length > 1) {
+				const tabs = (await Tabs.queryAsync({ windowId, })).filter(tab => tab.active || !ids.includes(tab.id));
+				const i = tabs.findIndex(_=>_.active);
+				const alt = findNext(tabs[i], tabs) || !onClose && (tabs[i + 1] || tabs[i - 1]);
+				if (alt) { (await Tabs.update(alt.id, { active: true, })); }
+				else { notify.info('Not unloading', 'No Tab to switch to'); return; }
+			}
+			discarding = ids; setTimeout(() => discarding === ids && (discarding = null), 500);
+			(await Tabs.discard(ids));
+			(await sleep(1000));
+			(await Promise.all(ids.map(id=>Tabs.getAsync(id)))).some(_=>!_.discarded) && notify.warn(
+				'Failed to unload tab',
+				`Some browser UI tabs and tabs with prompts on close can't be unloaded.`,
+			);
+		} break;
+		case 'unloadOtherTabs': {
+			unload((await Tabs.queryAsync({
+				discarded: false, windowId, pinned: pinned ? undefined : false,
+			})).filter(tab => tab.id !== id && !ids.includes(tab.id)));
+		} break;
+		case 'unloadAllTabs': {
+			unload((await Tabs.queryAsync({
+				discarded: false,
+			})));
+		} break;
+		case 'unloadTree': {
+			unload(
+				(await Promise.all(ids.map(id => tst.getChildren(id))))
+				.flat().filter(tab => !ids.includes(tab.id)) // for consistency, unload none of the selected roots, user can just follow up with `unloadTab` on the same selection
+			);
+		} break;
+	}
+}
 // BUG[FF60]: tab will report as loading and non-discarded directly after discarding,
 // but that doesn't reflect in the UI. Discarding it again fixes the tab state
 let discarding = null; addWrappedListener(_Tabs, function onUpdated(id, change) {
-	if (id !== discarding || change.discarded !== false) { return; }
+	if (!discarding || !discarding.includes(id) || change.discarded !== false) { return; }
 	debug && console.warn('[BUG] just-discarded tab updating as non-discarded', id);
 	Tabs.discard(id);
 });

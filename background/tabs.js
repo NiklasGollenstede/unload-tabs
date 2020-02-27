@@ -131,10 +131,9 @@ function setActive(tab) {
 // multiselection
 listen(Tabs.onHighlighted, function ({ tabIds: ids, windowId, }) {
 	debug2 && console.log('onHighlighted', ...arguments);
-	const highlightedIds = new Set(ids);
-	const newTabs = ids.map(id=>tabs.get(id)), lastTabs = query({ windowId, highlighted: true, });
-	newTabs.forEach(tab=>updateTab(tab, { highlighted: true, }));
-	lastTabs.forEach(last=>!highlightedIds.has(last.id) && updateTab(last, { highlighted: false, }));
+	const newTabs = ids.map(id => tabs.get(id)), oldTabs = query({ windowId, highlighted: true, });
+	newTabs.forEach(tab => updateTab(tab, { highlighted: true, }));
+	ids = new Set(ids); oldTabs.forEach(tab => !ids.has(tab.id) && updateTab(tab, { highlighted: false, }));
 });
 
 
