@@ -78,18 +78,20 @@ options['intregrate.tst'].onChange(([ value, ]) => value ? tst.enable() : tst.di
 
 // respond to menu click
 addWrappedListener(Menus, onClicked);
-async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { switch (menuItemId) {
+async function onClicked({ menuItemId, }, { id, active, windowId, pinned, highlighted, }) {
+	const ids = highlighted ? (await Tabs.queryAsync({ windowId, highlighted, })).map(_=>_.id) : [id,];
+	switch (menuItemId) {
 	case 'unloadTab': {
-		if (active) {
-			const tabs = (await Tabs.queryAsync({ windowId, })), i = tabs.findIndex(_=>_.active);
+		if (active || ids.length > 1) {
+			const tabs = (await Tabs.queryAsync({ windowId, })).filter(_=>_.active || !ids.includes(_.id)), i = tabs.findIndex(_=>_.active);
 			const alt = findNext(tabs[i], tabs) || !onClose && (tabs[i + 1] || tabs[i - 1]);
 			if (alt) { (await Tabs.update(alt.id, { active: true, })); }
 			else { notify.info('Not unloading', 'No Tab to switch to'); return; }
 		}
-		discarding = id; setTimeout(() => discarding === id && (discarding = null), 500);
-		(await Tabs.discard(id));
+		discarding = ids; setTimeout(() => discarding === ids && (discarding = null), 500);
+		(await Tabs.discard(ids));
 		(await sleep(1000));
-		!(await Tabs.getAsync(id)).discarded && notify.warn(
+		(await Promise.all(ids.map(id=>Tabs.getAsync(id)))).some(_=>!_.discarded) && notify.warn(
 			'Failed to unload tab',
 			`Some browser UI tabs and tabs with prompts on close can't be unloaded.`,
 		);
@@ -97,7 +99,7 @@ async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { s
 	case 'unloadOtherTabs': {
 		unload((await Tabs.queryAsync({
 			discarded: false, windowId, pinned: pinned ? undefined : false,
-		})).filter(_=>_.id !== id));
+		})).filter(_=>_.id !== id && !ids.includes(_.id)));
 	} break;
 	case 'unloadAllTabs': {
 		unload((await Tabs.queryAsync({
@@ -105,7 +107,7 @@ async function onClicked({ menuItemId, }, { id, active, windowId, pinned, }) { s
 		})));
 	} break;
 	case 'unloadTree': {
-		unload((await tst.getChildren(id)));
+		unload((await Promise.all(ids.map(id=>tst.getChildren(id)))).flat());
 	} break;
 } function unload(tabs) { Tabs.discard(tabs.map(_=>_.id)).catch(error => { // not sure when and why this can happen
 	const match = (/^Invalid tab ID: (\d+)$/).exec(error && error.message);

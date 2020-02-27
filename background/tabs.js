@@ -32,7 +32,7 @@ const fireRemoved = setEvent(exports, 'onRemoved', { lazy: false, });
 
 
 // cache
-const tabs = Object.getPrototypeOf(exports); // new Map/*<id,{ id, discarded, active, hidden, status, windowId, index, pinned, }>*/;
+const tabs = Object.getPrototypeOf(exports); // new Map/*<id,{ id, discarded, active, hidden, status, windowId, index, pinned, highlighted, }>*/;
 const active = new Map/*<windowId,id>*/, previous = new Map/*<windowId,id>*/;
 
 
@@ -97,10 +97,10 @@ function updateTab(tab, change) {
 	debug3 && console.log('fireUpdated', tab.id, change, clone(tab));
 	fireUpdated([ tab, change, ]);
 }
-function addTab({ id, discarded, active, hidden, status, windowId, index, pinned, }) {
+function addTab({ id, discarded, active, hidden, status, windowId, index, pinned, highlighted, }) {
 	const tab = {
 		id: +id, discarded: discarded || false, active: active || false, hidden: hidden || false,
-		status, windowId: +windowId, index: +index, pinned: pinned || false, __proto__: null,
+		status, windowId: +windowId, index: +index, pinned: pinned || false, highlighted: highlighted || false, __proto__: null,
 		restoring: false, // custom
 	}; tabs.set(id, tab);
 	Object.defineProperty(tab, 'id', { configurable: false, writable: false, }); // `.id` must never change
@@ -126,6 +126,16 @@ listen(Tabs.onActivated, function ({ tabId: id, windowId, }) {
 function setActive(tab) {
 	previous.set(tab.windowId, active.get(tab.windowId)); active.set(tab.windowId, tab.id);
 }
+
+
+// multiselection
+listen(Tabs.onHighlighted, function ({ tabIds: ids, windowId, }) {
+	debug2 && console.log('onHighlighted', ...arguments);
+	const highlightedIds = new Set(ids);
+	const newTabs = ids.map(id=>tabs.get(id)), lastTabs = query({ windowId, highlighted: true, });
+	newTabs.forEach(tab=>updateTab(tab, { highlighted: true, }));
+	lastTabs.forEach(last=>!highlightedIds.has(last.id) && updateTab(last, { highlighted: false, }));
+});
 
 
 // move within window
