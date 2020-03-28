@@ -37,7 +37,7 @@ If you encounter any <b>other</b> problems, please report them as an <a href="ht
 
 ## Development builds -- ![](https://ci.appveyor.com/api/projects/status/github/NiklasGollenstede/unload-tabs?svg=true)
 
-Development builds are automatically created on every commit with [appveyor](https://ci.appveyor.com/project/NiklasGollenstede/unload-tabs/history) and [released](https://github.com/NiklasGollenstede/epub-creator/releases) on GitHub.\
+Development builds are automatically created on every commit with [appveyor](https://ci.appveyor.com/project/NiklasGollenstede/unload-tabs/history) and [released](https://github.com/NiklasGollenstede/unload-tabs/releases) on GitHub.\
 These builds use a different id (`-dev` suffix), so they are installed as an additional extension and do not replace the release version. This means that:
  * you probably want to disable the release version while the development version is active
  * any options set are managed individually (so pre-release versions can't mess with your settings)
